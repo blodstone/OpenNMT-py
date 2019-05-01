@@ -3,7 +3,7 @@
 import os
 
 import torch
-
+import gensim
 from onmt.inputters.inputter import build_dataset_iter, \
     load_old_vocab, old_style_vocab
 from onmt.model_builder import build_model
@@ -69,7 +69,6 @@ def main(opt, device_id):
             vocab, opt.model_type, dynamic_dict=opt.copy_attn)
     else:
         fields = vocab
-
     # Report src and tgt vocab sizes, including for features
     for side in ['src', 'tgt']:
         f = fields[side]
@@ -94,6 +93,10 @@ def main(opt, device_id):
 
     # Build model saver
     model_saver = build_model_saver(model_opt, opt, model, fields, optim)
+
+    # Retrieve LDA Model
+    if opt.topic_model:
+        LDA_model = gensim.models.ldamulticore.LdaMulticore.load(opt.topic_model)
 
     trainer = build_trainer(
         opt, device_id, model, fields, optim, model_saver=model_saver)

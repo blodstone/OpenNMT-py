@@ -8,6 +8,7 @@ import glob
 import sys
 import gc
 import torch
+import gensim
 from functools import partial
 
 from onmt.utils.logging import init_logger, logger
@@ -28,7 +29,7 @@ def check_existing_pt_files(opt):
             sys.exit(1)
 
 
-def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, opt):
+def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, lda_model, opt):
     assert corpus_type in ['train', 'valid']
 
     if corpus_type == 'train':
@@ -104,6 +105,7 @@ def count_features(path):
 
 def main(opt):
     ArgumentParser.validate_preprocess_args(opt)
+
     torch.manual_seed(opt.seed)
     check_existing_pt_files(opt)
 
@@ -130,7 +132,7 @@ def main(opt):
 
     logger.info("Building & saving training data...")
     train_dataset_files = build_save_dataset(
-        'train', fields, src_reader, tgt_reader, opt)
+        'train', fields, src_reader, tgt_reader, LDA_model, opt)
 
     if opt.valid_src and opt.valid_tgt:
         logger.info("Building & saving validation data...")

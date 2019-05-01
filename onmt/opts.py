@@ -151,6 +151,10 @@ def model_opts(parser):
               help='Number of heads for transformer self-attention')
     group.add('--transformer_ff', '-transformer_ff', type=int, default=2048,
               help='Size of hidden transformer feed-forward')
+    group.add('--topic_attn', '-topic_attn', action="store_true",
+              help='Use topic attention')
+    group.add('--topic_model', '-topic_model',
+             help="Path to the topic for attention mode")
 
     # Generator and loss options.
     group.add('--copy_attn', '-copy_attn', action="store_true",

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from onmt.models.stacked_rnn import StackedLSTM, StackedGRU
-from onmt.modules import context_gate_factory, GlobalAttention
+from onmt.modules import context_gate_factory, GlobalAttention, TopicAttention
 from onmt.utils.rnn_factory import rnn_factory
 
 from onmt.utils.misc import aeq
@@ -84,7 +84,7 @@ class RNNDecoderBase(DecoderBase):
                  hidden_size, attn_type="general", attn_func="softmax",
                  coverage_attn=False, context_gate=None,
                  copy_attn=False, dropout=0.0, embeddings=None,
-                 reuse_copy_attn=False, copy_attn_type="general"):
+                 reuse_copy_attn=False, copy_attn_type="general", topic_attn=False):
         super(RNNDecoderBase, self).__init__(
             attentional=attn_type != "none" and attn_type is not None)
 
@@ -119,10 +119,16 @@ class RNNDecoderBase(DecoderBase):
                 raise ValueError("Cannot use coverage term with no attention.")
             self.attn = None
         else:
-            self.attn = GlobalAttention(
-                hidden_size, coverage=coverage_attn,
-                attn_type=attn_type, attn_func=attn_func
-            )
+            if topic_attn:
+                self.attn = TopicAttention(
+                    hidden_size, coverage=coverage_attn,
+                    attn_type=attn_type, attn_func=attn_func
+                )
+            else:
+                self.attn = GlobalAttention(
+                    hidden_size, coverage=coverage_attn,
+                    attn_type=attn_type, attn_func=attn_func
+                )
 
         if copy_attn and not reuse_copy_attn:
             if copy_attn_type == "none" or copy_attn_type is None:
