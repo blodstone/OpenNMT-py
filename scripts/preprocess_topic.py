@@ -55,17 +55,18 @@ if __name__=='__main__':
         line_i = 1
         file = open(file_path, 'r')
         for line in file:
-            print(line_i)
-            line_i += 1
+            new_line = ' '.join(line.split()[:400])
             parsed_dict = json.loads(
-                nlp.annotate(line,
+                    nlp.annotate(new_line,
                              properties={
                                  'annotators': 'lemma',
                                  'pipelineLanguage': 'en',
                                  'outputFormat': 'json'}))
             tokens_data = []
             raw_lemmas = [token['lemma'].lower() for sentence in parsed_dict['sentences'] for token in sentence['tokens']]
-            for lemma in raw_lemmas[:400]:
+            print("Doc: {} ({})".format(line_i, len(raw_lemmas)))
+            line_i += 1
+            for lemma in raw_lemmas:
                 if lemma in topic_vectors:
                     tokens_data.append(topic_vectors[lemma])
                 else:
@@ -84,10 +85,10 @@ if __name__=='__main__':
 
     # print('Processing test file:')
     # save_to_json('../data/bbc-split/src.txt.test', "/src.lda.test")
-    # print('Processing train file:')
-    # save_to_json('../data/bbc-split/src.txt.train', "/src.lda.train")
-    print('Processing validation file:')
-    save_to_json('../data/bbc-split/src.txt.validation', "/src.lda.validation")
+    print('Processing train file:')
+    save_to_json('../data/bbc-split/src.txt.train', "/src.lda.train")
+    # print('Processing validation file:')
+    #save_to_json('../data/bbc-split/src.txt.validation', "/src.lda.validation")
 
 
 
