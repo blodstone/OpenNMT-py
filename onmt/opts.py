@@ -151,10 +151,8 @@ def model_opts(parser):
               help='Number of heads for transformer self-attention')
     group.add('--transformer_ff', '-transformer_ff', type=int, default=2048,
               help='Size of hidden transformer feed-forward')
-    group.add('--topic_attn', '-topic_attn', action="store_true",
-              help='Use topic attention')
-    group.add('--topic_model', '-topic_model',
-             help="Path to the topic for attention mode")
+
+
 
     # Generator and loss options.
     group.add('--copy_attn', '-copy_attn', action="store_true",
@@ -197,13 +195,13 @@ def preprocess_opts(parser):
               help="Path to the training source data")
     group.add('--train_tgt', '-train_tgt', required=True,
               help="Path to the training target data")
-    group.add('--train_topic', '-train_topic', required=True,
+    group.add('--train_topic', '-train_topic',
               help="Path to the training topic data")
     group.add('--valid_src', '-valid_src',
               help="Path to the validation source data")
     group.add('--valid_tgt', '-valid_tgt',
               help="Path to the validation target data")
-    group.add('--valid_topic', '-valid_topic', required=True,
+    group.add('--valid_topic', '-valid_topic',
               help="Path to the validation topic data")
 
     group.add('--src_dir', '-src_dir', default="",
@@ -315,6 +313,10 @@ def train_opts(parser):
     group.add('--data', '-data', required=True,
               help='Path prefix to the ".train.pt" and '
                    '".valid.pt" file path from preprocess.py')
+    group.add('--topic_attn', '-topic_attn', action="store_true",
+              help='Use topic attention')
+    group.add('--topic_vectors', '-topic_vectors',
+              help="Path to topic vectors")
 
     group.add('--save_model', '-save_model', default='model',
               help="Model filename (the model will be saved as "

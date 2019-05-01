@@ -28,7 +28,7 @@ def split_topic(path, shard_size):
             shard = list(islice(topics['docs'], shard_size))
             if not shard:
                 break
-                yield shard
+            yield shard
 
 def aeq(*args):
     """

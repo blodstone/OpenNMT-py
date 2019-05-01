@@ -53,6 +53,7 @@ def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, opt):
             max_src_len=opt.src_seq_length, max_tgt_len=opt.tgt_seq_length)
     else:
         filter_pred = None
+
     for i, (src_shard, tgt_shard, topic_shard) in enumerate(shard_pairs):
         assert len(src_shard) == len(tgt_shard)
         assert len(src_shard) == len(topic_shard)

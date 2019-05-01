@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Training on a single process."""
 import os
-
+import pickle
 import torch
 import gensim
 from onmt.inputters.inputter import build_dataset_iter, \
@@ -95,8 +95,8 @@ def main(opt, device_id):
     model_saver = build_model_saver(model_opt, opt, model, fields, optim)
 
     # Retrieve LDA Model
-    if opt.topic_model:
-        LDA_model = gensim.models.ldamulticore.LdaMulticore.load(opt.topic_model)
+    if opt.topic_attn:
+        topic_vectors = pickle.load(open(opt.topic_vectors, 'rb'))
 
     trainer = build_trainer(
         opt, device_id, model, fields, optim, model_saver=model_saver)
