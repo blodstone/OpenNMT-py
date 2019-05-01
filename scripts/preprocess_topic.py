@@ -1,8 +1,6 @@
 import pickle
 import os
-import json
 import gensim
-import numpy as np
 from stanfordcorenlp import StanfordCoreNLP
 
 #constant
@@ -36,13 +34,13 @@ if __name__=='__main__':
     empty_word_topic = [min_word_topic_prob for i in topic_list]
 
     wordids = wordid_word_dict.keys()
-    topic_vectors = {'UNK': np.array(empty_word_topic)}
+    topic_vectors = {'UNK': empty_word_topic}
 
     for wordid in wordids:
         word = wordid_word_dict[wordid]
         topic_vector = [word_topic_dict[word][i] if i in word_topic_dict[word] else min_word_topic_prob for i in
                         topic_list]
-        topic_vectors[word] = np.array(topic_vector)
+        topic_vectors[word] = topic_vector
 
     nlp = StanfordCoreNLP(r'/home/acp16hh/Projects/Others/stanford-corenlp-full-2018-10-05')
     lda = gensim.models.ldamulticore.LdaMulticore.load('../data/lda-train-document-lemma-topic-512-iter-1000/lda.model', mmap='r')
@@ -55,27 +53,12 @@ if __name__=='__main__':
         line_i = 1
         file = open(file_path, 'r')
         for line in file:
-            new_line = ' '.join(line.split()[:400])
-            parsed_dict = json.loads(
-                    nlp.annotate(new_line,
-                             properties={
-                                 'annotators': 'lemma',
-                                 'pipelineLanguage': 'en',
-                                 'outputFormat': 'json'}))
-            tokens_data = []
-            raw_lemmas = [token['lemma'].lower() for sentence in parsed_dict['sentences'] for token in sentence['tokens']]
-            print("Doc: {} ({})".format(line_i, len(raw_lemmas)))
+            print(line_i)
             line_i += 1
-            for lemma in raw_lemmas:
-                if lemma in topic_vectors:
-                    tokens_data.append(topic_vectors[lemma])
-                else:
-                    tokens_data.append(topic_vectors['UNK'])
-            saved_parsed_dict['vectors'] = tokens_data
             bow = lda.id2word.doc2bow(line.split())
             topics = lda.get_document_topics(bow, minimum_probability=min_word_topic_prob,
                                              minimum_phi_value=0)
-            saved_parsed_dict['topic'] = np.array([topic[1] for topic in topics])
+            saved_parsed_dict['topic'] = [topic[1] for topic in topics]
             doc_parsed_dict['docs'].append(saved_parsed_dict)
 
         f_topic = open(finished_files_dir + save_path, "wb")
@@ -84,12 +67,12 @@ if __name__=='__main__':
         file.close()
 
     # print('Processing test file:')
-    # save_to_json('../data/bbc-split/src.txt.test', "/src.lda.test")
+    save_to_json('../data/bbc-split/src.txt.test', "/src.lda.test")
     print('Processing train file:')
     save_to_json('../data/bbc-split/src.txt.train', "/src.lda.train")
-    # print('Processing validation file:')
-    #save_to_json('../data/bbc-split/src.txt.validation', "/src.lda.validation")
-
+    print('Processing validation file:')
+    save_to_json('../data/bbc-split/src.txt.validation', "/src.lda.validation")
+    pickle.dump(topic_vectors, open(finished_files_dir + '/topic_vectors.lda', 'wb'))
 
 
 
