@@ -3,6 +3,7 @@
 import torch
 import random
 import inspect
+import pickle
 from itertools import islice
 
 
@@ -17,6 +18,18 @@ def split_corpus(path, shard_size):
                     break
                 yield shard
 
+
+def split_topic(path, shard_size):
+    with open(path, "rb") as f:
+        topics = pickle.load(f)
+        if shard_size <= 0:
+            yield topics
+        else:
+            while True:
+                shard = list(islice(topics, shard_size))
+                if not shard:
+                    break
+                    yield shard
 
 def aeq(*args):
     """

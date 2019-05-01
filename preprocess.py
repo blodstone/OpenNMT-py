@@ -8,11 +8,10 @@ import glob
 import sys
 import gc
 import torch
-import gensim
 from functools import partial
 
 from onmt.utils.logging import init_logger, logger
-from onmt.utils.misc import split_corpus
+from onmt.utils.misc import split_corpus, split_topic
 import onmt.inputters as inputters
 import onmt.opts as opts
 from onmt.utils.parse import ArgumentParser
@@ -29,21 +28,24 @@ def check_existing_pt_files(opt):
             sys.exit(1)
 
 
-def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, lda_model, opt):
+def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, opt):
     assert corpus_type in ['train', 'valid']
 
     if corpus_type == 'train':
         src = opt.train_src
         tgt = opt.train_tgt
+        topic = opt.train_topic
     else:
         src = opt.valid_src
         tgt = opt.valid_tgt
+        topic = opt.valid_topic
 
-    logger.info("Reading source and target files: %s %s." % (src, tgt))
+    logger.info("Reading source, target and topic files: %s %s %s." % (src, tgt, topic))
 
     src_shards = split_corpus(src, opt.shard_size)
     tgt_shards = split_corpus(tgt, opt.shard_size)
-    shard_pairs = zip(src_shards, tgt_shards)
+    topic_shards = split_topic(topic, opt.shard_size)
+    shard_pairs = zip(src_shards, tgt_shards, topic_shards)
     dataset_paths = []
     if (corpus_type == "train" or opt.filter_valid) and tgt is not None:
         filter_pred = partial(
@@ -51,13 +53,14 @@ def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, lda_model, o
             max_src_len=opt.src_seq_length, max_tgt_len=opt.tgt_seq_length)
     else:
         filter_pred = None
-    for i, (src_shard, tgt_shard) in enumerate(shard_pairs):
+    for i, (src_shard, tgt_shard, topic_shard) in enumerate(shard_pairs):
         assert len(src_shard) == len(tgt_shard)
+        assert len(src_shard) == len(topic_shard)
         logger.info("Building shard %d." % i)
         dataset = inputters.Dataset(
             fields,
             readers=[src_reader, tgt_reader] if tgt_reader else [src_reader],
-            data=([("src", src_shard), ("tgt", tgt_shard)]
+            data=([("src", src_shard), ("tgt", tgt_shard), ("topic", topic_shard)]
                   if tgt_reader else [("src", src_shard)]),
             dirs=[opt.src_dir, None] if tgt_reader else [opt.src_dir],
             sort_key=inputters.str2sortkey[opt.data_type],
@@ -132,7 +135,7 @@ def main(opt):
 
     logger.info("Building & saving training data...")
     train_dataset_files = build_save_dataset(
-        'train', fields, src_reader, tgt_reader, LDA_model, opt)
+        'train', fields, src_reader, tgt_reader, opt)
 
     if opt.valid_src and opt.valid_tgt:
         logger.info("Building & saving validation data...")
