@@ -197,12 +197,16 @@ def preprocess_opts(parser):
               help="Path to the training target data")
     group.add('--train_topic', '-train_topic',
               help="Path to the training topic data")
+    group.add('--train_lemma', '-train_lemma',
+              help="Path to the training lemma data")
     group.add('--valid_src', '-valid_src',
               help="Path to the validation source data")
     group.add('--valid_tgt', '-valid_tgt',
               help="Path to the validation target data")
     group.add('--valid_topic', '-valid_topic',
               help="Path to the validation topic data")
+    group.add('--valid_lemma', '-valid_lemma',
+              help="Path to the validation lemma data")
 
     group.add('--src_dir', '-src_dir', default="",
               help="Source directory for image or audio files.")

@@ -3,7 +3,7 @@ import json
 from stanfordcorenlp import StanfordCoreNLP
 
 nlp = StanfordCoreNLP(r'/home/acp16hh/Projects/Others/stanford-corenlp-full-2018-10-05')
-finished_files_dir = "../data/bbc-split"
+finished_files_dir = "../data/smallbbc-split"
 
 
 def save_to_json(file_path, save_path):
@@ -28,9 +28,9 @@ def save_to_json(file_path, save_path):
 
 
 
-# print('Processing train file:')
-# save_to_json('../data/bbc-split/src.txt.train', "/src.lemma.train")
-# print('Processing validation file:')
-# save_to_json('../data/bbc-split/src.txt.validation', "/src.lemma.validation")
+print('Processing train file:')
+save_to_json('../data/smallbbc-split/src.txt.train', "/src.lemma.train")
+print('Processing validation file:')
+save_to_json('../data/smallbbc-split/src.txt.validation', "/src.lemma.validation")
 print('Processing test file:')
-save_to_json('../data/bbc-split/src.txt.test', "/src.lemma.test")
+save_to_json('../data/smallbbc-split/src.txt.test', "/src.lemma.test")
