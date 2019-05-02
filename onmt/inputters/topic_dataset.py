@@ -12,7 +12,7 @@ class TopicDataReader(DataReaderBase):
 
 
 def batch_img(data, vocab):
-    return torch.FloatTensor(data)
+    return torch.unsqueeze(torch.FloatTensor(data), 0)
 
 
 def topic_fields(**kwargs):

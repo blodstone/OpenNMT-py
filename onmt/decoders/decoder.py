@@ -190,7 +190,7 @@ class RNNDecoderBase(DecoderBase):
         self.state["hidden"] = tuple(h.detach() for h in self.state["hidden"])
         self.state["input_feed"] = self.state["input_feed"].detach()
 
-    def forward(self, tgt, memory_bank, memory_lengths=None, step=None):
+    def forward(self, tgt, memory_bank, topic, memory_lengths=None, step=None):
         """
         Args:
             tgt (LongTensor): sequences of padded tokens
@@ -210,7 +210,7 @@ class RNNDecoderBase(DecoderBase):
         """
 
         dec_state, dec_outs, attns = self._run_forward_pass(
-            tgt, memory_bank, memory_lengths=memory_lengths)
+            tgt, memory_bank, topic, memory_lengths=memory_lengths)
 
         # Update the state with the result.
         if not isinstance(dec_state, tuple):
@@ -351,7 +351,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
           G --> H
     """
 
-    def _run_forward_pass(self, tgt, memory_bank, memory_lengths=None):
+    def _run_forward_pass(self, tgt, memory_bank, topic, memory_lengths=None):
         """
         See StdRNNDecoder._run_forward_pass() for description
         of arguments and return values.
