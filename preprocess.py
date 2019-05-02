@@ -28,7 +28,7 @@ def check_existing_pt_files(opt):
             sys.exit(1)
 
 
-def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, opt):
+def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, topic_reader, opt):
     assert corpus_type in ['train', 'valid']
 
     if corpus_type == 'train':
@@ -60,10 +60,10 @@ def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, opt):
         logger.info("Building shard %d." % i)
         dataset = inputters.Dataset(
             fields,
-            readers=[src_reader, tgt_reader] if tgt_reader else [src_reader],
+            readers=[src_reader, tgt_reader, topic_reader] if tgt_reader else [src_reader, topic_reader],
             data=([("src", src_shard), ("tgt", tgt_shard), ("topic", topic_shard)]
-                  if tgt_reader else [("src", src_shard)]),
-            dirs=[opt.src_dir, None] if tgt_reader else [opt.src_dir],
+                  if tgt_reader else [("src", src_shard), ("topic", topic_shard)]),
+            dirs=[opt.src_dir, None, None] if tgt_reader else [opt.src_dir, None],
             sort_key=inputters.str2sortkey[opt.data_type],
             filter_pred=filter_pred
         )
@@ -133,14 +133,14 @@ def main(opt):
 
     src_reader = inputters.str2reader[opt.data_type].from_opt(opt)
     tgt_reader = inputters.str2reader["text"].from_opt(opt)
-
+    topic_reader = inputters.str2reader['topic'].from_opt(opt)
     logger.info("Building & saving training data...")
     train_dataset_files = build_save_dataset(
-        'train', fields, src_reader, tgt_reader, opt)
+        'train', fields, src_reader, tgt_reader, topic_reader, opt)
 
     if opt.valid_src and opt.valid_tgt:
         logger.info("Building & saving validation data...")
-        build_save_dataset('valid', fields, src_reader, tgt_reader, opt)
+        build_save_dataset('valid', fields, src_reader, tgt_reader, topic_reader, opt)
 
     logger.info("Building & saving vocabulary...")
     build_save_vocab(train_dataset_files, fields, opt)

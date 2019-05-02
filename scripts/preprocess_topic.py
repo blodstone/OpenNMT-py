@@ -4,7 +4,7 @@ import gensim
 from stanfordcorenlp import StanfordCoreNLP
 
 #constant
-finished_files_dir = "../data/bbc-split"
+finished_files_dir = "../data/smallbbc-split"
 lda_word_topics = "../data/lda-train-document-lemma-topic-512-iter-1000/word_term_topics.log"
 
 if __name__=='__main__':
@@ -67,11 +67,11 @@ if __name__=='__main__':
         file.close()
 
     # print('Processing test file:')
-    save_to_json('../data/bbc-split/src.txt.test', "/src.lda.test")
+    # save_to_json('../data/bbc-split/src.txt.test', "/src.lda.test")
     print('Processing train file:')
-    save_to_json('../data/bbc-split/src.txt.train', "/src.lda.train")
+    save_to_json('../data/smallbbc-split/src.txt.train', "/src.lda.train")
     print('Processing validation file:')
-    save_to_json('../data/bbc-split/src.txt.validation', "/src.lda.validation")
+    save_to_json('../data/smallbbc-split/src.txt.validation', "/src.lda.validation")
     pickle.dump(topic_vectors, open(finished_files_dir + '/topic_vectors.lda', 'wb'))
 
 

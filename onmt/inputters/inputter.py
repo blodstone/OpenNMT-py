@@ -15,6 +15,7 @@ from torchtext.vocab import Vocab
 from onmt.inputters.text_dataset import text_fields, TextMultiField
 from onmt.inputters.image_dataset import image_fields
 from onmt.inputters.audio_dataset import audio_fields
+from onmt.inputters.topic_dataset import topic_fields
 from onmt.utils.logging import logger
 # backwards compatibility
 from onmt.inputters.text_dataset import _feature_tokenize  # noqa: F401
@@ -100,6 +101,7 @@ def get_fields(
 
     fields_getters = {"text": text_fields,
                       "img": image_fields,
+                      "topic": topic_fields,
                       "audio": audio_fields}
 
     src_field_kwargs = {"n_feats": n_src_feats,
@@ -115,6 +117,8 @@ def get_fields(
                         "truncate": tgt_truncate,
                         "base_name": "tgt"}
     fields["tgt"] = fields_getters["text"](**tgt_field_kwargs)
+
+    fields["topic"] = fields_getters["topic"]()
 
     indices = Field(use_vocab=False, dtype=torch.long, sequential=False)
     fields["indices"] = indices
