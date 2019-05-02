@@ -15,7 +15,7 @@ from torchtext.vocab import Vocab
 from onmt.inputters.text_dataset import text_fields, TextMultiField
 from onmt.inputters.image_dataset import image_fields
 from onmt.inputters.audio_dataset import audio_fields
-from onmt.inputters.topic_dataset import topic_fields
+from onmt.inputters.topic_dataset import topic_fields, lemma_fields
 from onmt.utils.logging import logger
 # backwards compatibility
 from onmt.inputters.text_dataset import _feature_tokenize  # noqa: F401
@@ -66,7 +66,8 @@ def get_fields(
     eos='</s>',
     dynamic_dict=False,
     src_truncate=None,
-    tgt_truncate=None
+    tgt_truncate=None,
+    topic_vectors=None,
 ):
     """
     Args:
@@ -102,7 +103,8 @@ def get_fields(
     fields_getters = {"text": text_fields,
                       "img": image_fields,
                       "topic": topic_fields,
-                      "audio": audio_fields}
+                      "audio": audio_fields,
+                      "lemma": lemma_fields}
 
     src_field_kwargs = {"n_feats": n_src_feats,
                         "include_lengths": True,
@@ -119,6 +121,8 @@ def get_fields(
     fields["tgt"] = fields_getters["text"](**tgt_field_kwargs)
 
     fields["topic"] = fields_getters["topic"]()
+
+    fields['lemma'] = fields_getters["lemma"](**{"topic_vectors": topic_vectors})
 
     indices = Field(use_vocab=False, dtype=torch.long, sequential=False)
     fields["indices"] = indices

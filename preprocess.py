@@ -28,24 +28,28 @@ def check_existing_pt_files(opt):
             sys.exit(1)
 
 
-def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, topic_reader, opt):
+def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, lemma_reader, topic_reader, opt):
     assert corpus_type in ['train', 'valid']
 
     if corpus_type == 'train':
         src = opt.train_src
         tgt = opt.train_tgt
         topic = opt.train_topic
+        lemma = opt.train_lemma
     else:
         src = opt.valid_src
         tgt = opt.valid_tgt
         topic = opt.valid_topic
+        lemma = opt.valid_lemma
 
     logger.info("Reading source, target and topic files: %s %s %s." % (src, tgt, topic))
 
     src_shards = split_corpus(src, opt.shard_size)
     tgt_shards = split_corpus(tgt, opt.shard_size)
+    lemma_shards = split_corpus(lemma, opt.shard_size)
     topic_shards = split_topic(topic, opt.shard_size)
-    shard_pairs = zip(src_shards, tgt_shards, topic_shards)
+
+    shard_pairs = zip(src_shards, tgt_shards, topic_shards, lemma_shards)
     dataset_paths = []
     if (corpus_type == "train" or opt.filter_valid) and tgt is not None:
         filter_pred = partial(
@@ -54,16 +58,17 @@ def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, topic_reader
     else:
         filter_pred = None
 
-    for i, (src_shard, tgt_shard, topic_shard) in enumerate(shard_pairs):
+    for i, (src_shard, tgt_shard, topic_shard, lemma_shards) in enumerate(shard_pairs):
         assert len(src_shard) == len(tgt_shard)
         assert len(src_shard) == len(topic_shard)
         logger.info("Building shard %d." % i)
         dataset = inputters.Dataset(
             fields,
-            readers=[src_reader, tgt_reader, topic_reader] if tgt_reader else [src_reader, topic_reader],
-            data=([("src", src_shard), ("tgt", tgt_shard), ("topic", topic_shard)]
-                  if tgt_reader else [("src", src_shard), ("topic", topic_shard)]),
-            dirs=[opt.src_dir, None, None] if tgt_reader else [opt.src_dir, None],
+            readers=[src_reader, tgt_reader, topic_reader, lemma_reader]
+                if tgt_reader else [src_reader, topic_reader, lemma_reader],
+            data=([("src", src_shard), ("tgt", tgt_shard), ("topic", topic_shard), ("lemma", lemma_shards)]
+                  if tgt_reader else [("src", src_shard), ("topic", topic_shard), ("lemma", lemma_shards)]),
+            dirs=[opt.src_dir, None, None, None] if tgt_reader else [opt.src_dir, None, None],
             sort_key=inputters.str2sortkey[opt.data_type],
             filter_pred=filter_pred
         )
@@ -133,14 +138,16 @@ def main(opt):
 
     src_reader = inputters.str2reader[opt.data_type].from_opt(opt)
     tgt_reader = inputters.str2reader["text"].from_opt(opt)
-    topic_reader = inputters.str2reader['topic'].from_opt(opt)
+    topic_reader = inputters.str2reader["topic"].from_opt(opt)
+    lemma_reader = inputters.str2reader["text"].from_opt(opt)
+
     logger.info("Building & saving training data...")
     train_dataset_files = build_save_dataset(
-        'train', fields, src_reader, tgt_reader, topic_reader, opt)
+        'train', fields, src_reader, tgt_reader, lemma_reader, topic_reader, opt)
 
     if opt.valid_src and opt.valid_tgt:
         logger.info("Building & saving validation data...")
-        build_save_dataset('valid', fields, src_reader, tgt_reader, topic_reader, opt)
+        build_save_dataset('valid', fields, src_reader, tgt_reader, lemma_reader, topic_reader, opt)
 
     logger.info("Building & saving vocabulary...")
     build_save_vocab(train_dataset_files, fields, opt)
