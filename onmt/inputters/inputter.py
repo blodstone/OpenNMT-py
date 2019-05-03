@@ -3,6 +3,7 @@ import glob
 import os
 import codecs
 import math
+import pickle
 
 from collections import Counter, defaultdict
 from itertools import chain, cycle
@@ -15,7 +16,7 @@ from torchtext.vocab import Vocab
 from onmt.inputters.text_dataset import text_fields, TextMultiField
 from onmt.inputters.image_dataset import image_fields
 from onmt.inputters.audio_dataset import audio_fields
-from onmt.inputters.topic_dataset import topic_fields, lemma_fields
+from onmt.inputters.topic_dataset import DocTopicField, WordTopicField
 from onmt.utils.logging import logger
 # backwards compatibility
 from onmt.inputters.text_dataset import _feature_tokenize  # noqa: F401
@@ -67,7 +68,6 @@ def get_fields(
     dynamic_dict=False,
     src_truncate=None,
     tgt_truncate=None,
-    topic_vectors=None,
 ):
     """
     Args:
@@ -98,13 +98,14 @@ def get_fields(
         "Data type not implemented"
     assert not dynamic_dict or src_data_type == 'text', \
         'it is not possible to use dynamic_dict with non-text input'
+
     fields = {}
 
     fields_getters = {"text": text_fields,
                       "img": image_fields,
-                      "topic": topic_fields,
+                      "doc_topic": DocTopicField,
                       "audio": audio_fields,
-                      "lemma": lemma_fields}
+                      "word_topic": WordTopicField}
 
     src_field_kwargs = {"n_feats": n_src_feats,
                         "include_lengths": True,
@@ -120,9 +121,9 @@ def get_fields(
                         "base_name": "tgt"}
     fields["tgt"] = fields_getters["text"](**tgt_field_kwargs)
 
-    fields["topic"] = fields_getters["topic"]()
+    fields["doc_topic"] = fields_getters["doc_topic"]()
 
-    fields['lemma'] = fields_getters["lemma"](**{"topic_vectors": topic_vectors})
+    fields['word_topic'] = fields_getters["word_topic"]()
 
     indices = Field(use_vocab=False, dtype=torch.long, sequential=False)
     fields["indices"] = indices

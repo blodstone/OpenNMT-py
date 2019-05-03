@@ -3,7 +3,7 @@ from onmt.inputters.datareader_base import DataReaderBase
 from torchtext.data import Field, RawField
 
 
-class TopicDataReader(DataReaderBase):
+class DocTopicDataReader(DataReaderBase):
     def read(self, topics, side, _dir=None):
         assert _dir is None or _dir == "", \
             "Cannot use _dir with TextDataReader."
@@ -11,25 +11,31 @@ class TopicDataReader(DataReaderBase):
             yield {side: topic['topic'], "indices": i}
 
 
-def topic_to_tensor(data, vocab):
-    return torch.unsqueeze(torch.FloatTensor(data), 0)
+class DocTopicField(RawField):
+
+    def __init__(self):
+        super(DocTopicField, self).__init__()
+        self.sequential = False
+        self.use_vocab = False
+
+    def process(self, batch, device=None):
+        return torch.unsqueeze(torch.tensor(batch, dtype=torch.float64, device=device))
+
+# def topic_to_tensor(data, vocab):
+#     return torch.unsqueeze(torch.FloatTensor(data), 0)
 
 
-def topic_fields(**kwargs):
-    topic = Field(use_vocab=False, dtype=torch.float,
-        postprocessing=topic_to_tensor, sequential=False)
-    return topic
+# def topic_fields(**kwargs):
+#     topic = TopicField()
+#     return topic
 
 
-class LemmaField(RawField):
-    pass
+class WordTopicField(RawField):
 
-def lemma_to_topic(data, vocab):
-    print()
-    pass
+    def __init__(self):
+        super(WordTopicField, self).__init__()
+        self.sequential = False
+        self.use_vocab = False
 
-
-def lemma_fields(**kwargs):
-    lemma = Field(use_vocab=False, dtype=torch.float,
-        postprocessing=lemma_to_topic, sequential=True)
-    return lemma
+    def process(self, batch, *args, **kwargs):
+        return batch

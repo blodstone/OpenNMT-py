@@ -66,8 +66,8 @@ def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, lemma_reader
             fields,
             readers=[src_reader, tgt_reader, topic_reader, lemma_reader]
                 if tgt_reader else [src_reader, topic_reader, lemma_reader],
-            data=([("src", src_shard), ("tgt", tgt_shard), ("topic", topic_shard), ("lemma", lemma_shards)]
-                  if tgt_reader else [("src", src_shard), ("topic", topic_shard), ("lemma", lemma_shards)]),
+            data=([("src", src_shard), ("tgt", tgt_shard), ("doc_topic", topic_shard), ("word_topic", lemma_shards)]
+                  if tgt_reader else [("src", src_shard), ("doc_topic", topic_shard), ("word_topic", lemma_shards)]),
             dirs=[opt.src_dir, None, None, None] if tgt_reader else [opt.src_dir, None, None],
             sort_key=inputters.str2sortkey[opt.data_type],
             filter_pred=filter_pred
@@ -134,20 +134,21 @@ def main(opt):
         tgt_nfeats,
         dynamic_dict=opt.dynamic_dict,
         src_truncate=opt.src_seq_length_trunc,
-        tgt_truncate=opt.tgt_seq_length_trunc)
+        tgt_truncate=opt.tgt_seq_length_trunc,
+    )
 
     src_reader = inputters.str2reader[opt.data_type].from_opt(opt)
     tgt_reader = inputters.str2reader["text"].from_opt(opt)
-    topic_reader = inputters.str2reader["topic"].from_opt(opt)
-    lemma_reader = inputters.str2reader["text"].from_opt(opt)
+    doc_topic_reader = inputters.str2reader["doc_topic"].from_opt(opt)
+    word_topic_reader = inputters.str2reader["text"].from_opt(opt)
 
     logger.info("Building & saving training data...")
     train_dataset_files = build_save_dataset(
-        'train', fields, src_reader, tgt_reader, lemma_reader, topic_reader, opt)
+        'train', fields, src_reader, tgt_reader, word_topic_reader, doc_topic_reader, opt)
 
     if opt.valid_src and opt.valid_tgt:
         logger.info("Building & saving validation data...")
-        build_save_dataset('valid', fields, src_reader, tgt_reader, lemma_reader, topic_reader, opt)
+        build_save_dataset('valid', fields, src_reader, tgt_reader, word_topic_reader, doc_topic_reader, opt)
 
     logger.info("Building & saving vocabulary...")
     build_save_vocab(train_dataset_files, fields, opt)

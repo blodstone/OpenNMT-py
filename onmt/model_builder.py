@@ -129,8 +129,6 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
     else:
         src_emb = None
 
-    topic_field = fields["topic"]
-
     # Build encoder.
     encoder = build_encoder(model_opt, src_emb)
 

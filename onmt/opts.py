@@ -319,9 +319,8 @@ def train_opts(parser):
                    '".valid.pt" file path from preprocess.py')
     group.add('--topic_attn', '-topic_attn', action="store_true",
               help='Use topic attention')
-    group.add('--topic_vectors', '-topic_vectors',
-              help="Path to topic vectors")
-
+    group.add('--topic_matrix', '-topic_matrix',
+              help="Path to topic matrix")
     group.add('--save_model', '-save_model', default='model',
               help="Model filename (the model will be saved as "
                    "<save_model>_N.pt where N is the number "

@@ -96,7 +96,7 @@ def main(opt, device_id):
 
     # Retrieve LDA Model
     if opt.topic_attn:
-        topic_vectors = pickle.load(open(opt.topic_vectors, 'rb'))
+        topic_matrix = pickle.load(open(opt.topic_matrix, 'rb'))
 
     trainer = build_trainer(
         opt, device_id, model, fields, optim, model_saver=model_saver)
