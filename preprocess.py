@@ -94,6 +94,7 @@ def build_save_vocab(train_dataset, fields, opt):
         train_dataset, fields, opt.data_type, opt.share_vocab,
         opt.src_vocab, opt.src_vocab_size, opt.src_words_min_frequency,
         opt.tgt_vocab, opt.tgt_vocab_size, opt.tgt_words_min_frequency,
+        opt.lemma_vocab, opt.lemma_vocab_size, opt.lemma_words_min_frequency,
         vocab_size_multiple=opt.vocab_size_multiple
     )
 
@@ -132,8 +133,10 @@ def main(opt):
         opt.data_type,
         src_nfeats,
         tgt_nfeats,
+        lower=opt.lower,
         dynamic_dict=opt.dynamic_dict,
         src_truncate=opt.src_seq_length_trunc,
+        src_sent_truncate=opt.src_sent_length_trunc,
         tgt_truncate=opt.tgt_seq_length_trunc,
     )
 

@@ -19,23 +19,11 @@ class DocTopicField(RawField):
         self.use_vocab = False
 
     def process(self, batch, device=None):
-        return torch.unsqueeze(torch.tensor(batch, dtype=torch.float64, device=device))
-
-# def topic_to_tensor(data, vocab):
-#     return torch.unsqueeze(torch.FloatTensor(data), 0)
+        return torch.unsqueeze(
+            torch.tensor(batch, dtype=torch.float64, device=device), 1)
 
 
-# def topic_fields(**kwargs):
-#     topic = TopicField()
-#     return topic
-
-
-class WordTopicField(RawField):
+class WordTopicField(Field):
 
     def __init__(self):
         super(WordTopicField, self).__init__()
-        self.sequential = False
-        self.use_vocab = False
-
-    def process(self, batch, *args, **kwargs):
-        return batch

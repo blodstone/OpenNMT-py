@@ -62,6 +62,18 @@ def main(opt, device_id):
         model_opt = opt
         vocab = torch.load(opt.data + '.vocab.pt')
 
+    logger.info('Loading alignment.')
+    lemma_aligns = open(model_opt.lemma_align, 'rb').readlines()
+    src_stoi = vocab['src'].base_field.vocab.stoi
+    lemma_stoi = vocab['word_topic'].base_field.vocab.stoi
+    word_to_lemma = {}
+    for pair in lemma_aligns:
+        pair = pair.strip().split()
+        word_to_lemma[src_stoi[pair[0].decode('utf-8')]] = \
+            lemma_stoi[pair[1].decode('utf-8')]
+
+    logger.info('Loading topic matrix')
+    topic_matrix = torch.load(opt.topic_matrix)
     # check for code where vocab is saved instead of fields
     # (in the future this will be done in a smarter way)
     if old_style_vocab(vocab):
@@ -94,10 +106,6 @@ def main(opt, device_id):
     # Build model saver
     model_saver = build_model_saver(model_opt, opt, model, fields, optim)
 
-    # Retrieve LDA Model
-    if opt.topic_attn:
-        topic_matrix = pickle.load(open(opt.topic_matrix, 'rb'))
-
     trainer = build_trainer(
         opt, device_id, model, fields, optim, model_saver=model_saver)
 
@@ -114,6 +122,7 @@ def main(opt, device_id):
         logger.warning("Option single_pass is enabled, ignoring train_steps.")
         train_steps = 0
     trainer.train(
+        word_to_lemma,
         train_iter,
         train_steps,
         save_checkpoint_steps=opt.save_checkpoint_steps,

@@ -237,6 +237,9 @@ def preprocess_opts(parser):
     group.add('--tgt_vocab', '-tgt_vocab', default="",
               help="Path to an existing target vocabulary. Format: "
                    "one word per line.")
+    group.add('--lemma_vocab', '-lemma_vocab', default="",
+              help="Path to an existing lemma vocabulary. Format: "
+                   "one word per line.")
     group.add('--features_vocabs_prefix', '-features_vocabs_prefix',
               type=str, default='',
               help="Path prefix to existing features vocabularies")
@@ -244,6 +247,8 @@ def preprocess_opts(parser):
               help="Size of the source vocabulary")
     group.add('--tgt_vocab_size', '-tgt_vocab_size', type=int, default=50000,
               help="Size of the target vocabulary")
+    group.add('--lemma_vocab_size', '-lemma_vocab_size', type=int, default=50000,
+              help="Size of the lemma vocabulary")
     group.add('--vocab_size_multiple', '-vocab_size_multiple',
               type=int, default=1,
               help="Make the vocabulary size a multiple of this value")
@@ -252,6 +257,8 @@ def preprocess_opts(parser):
               '-src_words_min_frequency', type=int, default=0)
     group.add('--tgt_words_min_frequency',
               '-tgt_words_min_frequency', type=int, default=0)
+    group.add('--lemma_words_min_frequency',
+              '-lemma_words_min_frequency', type=int, default=0)
 
     group.add('--dynamic_dict', '-dynamic_dict', action='store_true',
               help="Create dynamic dictionaries")
@@ -265,6 +272,9 @@ def preprocess_opts(parser):
     group.add('--src_seq_length_trunc', '-src_seq_length_trunc',
               type=int, default=None,
               help="Truncate source sequence length.")
+    group.add('--src_sent_length_trunc', '-src_sent_length_trunc',
+              type=int, default=None,
+              help="Truncate source sentence length.")
     group.add('--tgt_seq_length', '-tgt_seq_length', type=int, default=50,
               help="Maximum target sequence length to keep.")
     group.add('--tgt_seq_length_trunc', '-tgt_seq_length_trunc',
@@ -321,6 +331,7 @@ def train_opts(parser):
               help='Use topic attention')
     group.add('--topic_matrix', '-topic_matrix',
               help="Path to topic matrix")
+    group.add('--lemma-align', '-lemma-align', help="Path to lemma alignment")
     group.add('--save_model', '-save_model', default='model',
               help="Model filename (the model will be saved as "
                    "<save_model>_N.pt where N is the number "

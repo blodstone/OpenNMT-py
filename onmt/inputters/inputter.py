@@ -65,8 +65,10 @@ def get_fields(
     pad='<blank>',
     bos='<s>',
     eos='</s>',
+    lower=False,
     dynamic_dict=False,
     src_truncate=None,
+    src_sent_truncate=None,
     tgt_truncate=None,
 ):
     """
@@ -105,25 +107,36 @@ def get_fields(
                       "img": image_fields,
                       "doc_topic": DocTopicField,
                       "audio": audio_fields,
-                      "word_topic": WordTopicField}
+                      "word_topic": text_fields}
 
     src_field_kwargs = {"n_feats": n_src_feats,
                         "include_lengths": True,
                         "pad": pad, "bos": None, "eos": None,
                         "truncate": src_truncate,
-                        "base_name": "src"}
+                        "sent_truncate": src_sent_truncate,
+                        "base_name": "src",
+                        "lower": lower}
     fields["src"] = fields_getters[src_data_type](**src_field_kwargs)
 
     tgt_field_kwargs = {"n_feats": n_tgt_feats,
                         "include_lengths": False,
-                        "pad": pad, "bos": bos, "eos": eos,
+                        "pad": pad, "bos": None, "eos": None,
                         "truncate": tgt_truncate,
-                        "base_name": "tgt"}
+                        "base_name": "tgt",
+                        "lower": lower}
     fields["tgt"] = fields_getters["text"](**tgt_field_kwargs)
 
     fields["doc_topic"] = fields_getters["doc_topic"]()
 
-    fields['word_topic'] = fields_getters["word_topic"]()
+    word_topic_field_kwargs = {"n_feats": 0,
+                        "include_lengths": False,
+                        "pad": pad, "bos": None, "eos": None,
+                        "truncate": src_truncate,
+                        "sent_truncate": src_sent_truncate,
+                        "base_name": "word_topic",
+                        "lower": lower}
+
+    fields['word_topic'] = fields_getters["word_topic"](**word_topic_field_kwargs)
 
     indices = Field(use_vocab=False, dtype=torch.long, sequential=False)
     fields["indices"] = indices
@@ -320,6 +333,7 @@ def _build_fv_from_multifield(multifield, counters, build_fv_args,
 def build_vocab(train_dataset_files, fields, data_type, share_vocab,
                 src_vocab_path, src_vocab_size, src_words_min_frequency,
                 tgt_vocab_path, tgt_vocab_size, tgt_words_min_frequency,
+                lemma_vocab_path, lemma_vocab_size, lemma_words_min_frequency,
                 vocab_size_multiple=1):
     """Build the fields for all data sides.
 
@@ -370,6 +384,12 @@ def build_vocab(train_dataset_files, fields, data_type, share_vocab,
     else:
         tgt_vocab = None
 
+    if lemma_vocab_path:
+        lemma_vocab, lemma_vocab_size = _load_vocab(
+            lemma_vocab_path, "lemma", counters)
+    else:
+        lemma_vocab = None
+
     for i, path in enumerate(train_dataset_files):
         dataset = torch.load(path)
         logger.info(" * reloading %s." % path)
@@ -385,7 +405,8 @@ def build_vocab(train_dataset_files, fields, data_type, share_vocab,
                 for (sub_n, sub_f), fd in zip(
                         f_iter, all_data):
                     has_vocab = (sub_n == 'src' and src_vocab) or \
-                                (sub_n == 'tgt' and tgt_vocab)
+                                (sub_n == 'tgt' and tgt_vocab) or \
+                                (sub_n == 'word_topic' and lemma_vocab)
                     if sub_f.sequential and not has_vocab:
                         val = fd
                         counters[sub_n].update(val)
@@ -404,6 +425,16 @@ def build_vocab(train_dataset_files, fields, data_type, share_vocab,
         max_size=src_vocab_size, min_freq=src_words_min_frequency)
     build_fv_args["tgt"] = dict(
         max_size=tgt_vocab_size, min_freq=tgt_words_min_frequency)
+    build_fv_args["word_topic"] = dict(
+        max_size=lemma_vocab_size, min_freq=lemma_words_min_frequency)
+
+    word_topic_multifield = fields["word_topic"]
+    _build_fv_from_multifield(
+        word_topic_multifield,
+        counters,
+        build_fv_args,
+        size_multiple=vocab_size_multiple if not share_vocab else 1)
+
     tgt_multifield = fields["tgt"]
     _build_fv_from_multifield(
         tgt_multifield,

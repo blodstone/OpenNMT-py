@@ -245,3 +245,13 @@ class Embeddings(nn.Module):
             source = self.make_embedding(source)
 
         return source
+
+
+class TopicEmbeddings(Embeddings):
+    """Topic embeddings for lemma"""
+
+    def __init__(self, word_vec_size, word_vocab_size, word_padding_idx):
+        super(TopicEmbeddings, self)\
+            .__init__(word_vec_size,
+                 word_vocab_size,
+                 word_padding_idx)
