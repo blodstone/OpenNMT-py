@@ -20,12 +20,12 @@ def split_corpus(path, shard_size):
 
 
 def split_topic(path, shard_size):
-    topics = pickle.load(open(path, "rb"))
+    topics = iter(pickle.load(open(path, "rb"))['docs'])
     if shard_size <= 0:
         yield topics
     else:
         while True:
-            shard = list(islice(topics['docs'], shard_size))
+            shard = list(islice(topics, shard_size))
             if not shard:
                 break
             yield shard
