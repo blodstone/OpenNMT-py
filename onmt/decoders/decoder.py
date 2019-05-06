@@ -203,7 +203,7 @@ class RNNDecoderBase(DecoderBase):
         topic_emb = torch.squeeze(topic_matrix[word_topic])
         return topic_emb
 
-    def forward(self, tgt, memory_bank,
+    def forward(self, tgt, memory_bank, word_to_lemma,
                 word_topic, word_topic_length,
                 topic_matrix, memory_lengths=None,
                 step=None):
@@ -228,7 +228,7 @@ class RNNDecoderBase(DecoderBase):
             word_topic, word_topic_length, topic_matrix)
 
         dec_state, dec_outs, attns = self._run_forward_pass(
-            tgt, memory_bank, topic_memory_bank,
+            tgt, memory_bank, word_to_lemma, topic_memory_bank,
             topic_matrix, memory_lengths=memory_lengths)
 
         # Update the state with the result.
@@ -370,7 +370,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
           G --> H
     """
 
-    def _run_forward_pass(self, tgt, memory_bank,
+    def _run_forward_pass(self, tgt, memory_bank, word_to_lemma,
                           topic_memory_bank, topic_matrix,
                           memory_lengths=None):
         """
@@ -407,7 +407,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
             decoder_input = torch.cat([emb_t.squeeze(0), input_feed], 1)
             rnn_output, dec_state = self.rnn(decoder_input, dec_state)
             rnn_topic = torch.multinomial(self.generator(rnn_output), 1)
-            rnn_topic = topic_matrix[rnn_topic]
+            rnn_topic = topic_matrix[word_to_lemma[rnn_topic]]
             if self.attentional:
                 decoder_output, p_attn, t_attn = self.attn(
                     rnn_output,
