@@ -84,6 +84,8 @@ def main(opt, device_id):
         topic_matrix = torch.load(opt.topic_matrix, map_location=torch.device(device_id))
     else:
         topic_matrix = torch.load(opt.topic_matrix)
+    if opt.model_dtype == 'fp16':
+        topic_matrix = topic_matrix.half()
     # check for code where vocab is saved instead of fields
     # (in the future this will be done in a smarter way)
     if old_style_vocab(vocab):
