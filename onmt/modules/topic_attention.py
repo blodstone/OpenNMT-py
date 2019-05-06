@@ -227,7 +227,7 @@ class TopicAttention(nn.Module):
         if one_step:
             attn_h = attn_h.squeeze(1)
             align_vectors = align_vectors.squeeze(1)
-
+            topic_align_vectors = topic_align_vectors.squeeze(1)
             # Check output sizes
             batch_, dim_ = attn_h.size()
             aeq(batch, batch_)

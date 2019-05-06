@@ -129,7 +129,7 @@ def get_fields(
     fields["doc_topic"] = fields_getters["doc_topic"]()
 
     word_topic_field_kwargs = {"n_feats": 0,
-                        "include_lengths": False,
+                        "include_lengths": True,
                         "pad": pad, "bos": None, "eos": None,
                         "truncate": src_truncate,
                         "sent_truncate": src_sent_truncate,

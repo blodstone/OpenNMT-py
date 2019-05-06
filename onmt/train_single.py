@@ -122,6 +122,7 @@ def main(opt, device_id):
         logger.warning("Option single_pass is enabled, ignoring train_steps.")
         train_steps = 0
     trainer.train(
+        topic_matrix,
         word_to_lemma,
         train_iter,
         train_steps,

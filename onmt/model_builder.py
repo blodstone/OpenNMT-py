@@ -66,7 +66,7 @@ def build_encoder(opt, embeddings):
     return str2enc[enc_type].from_opt(opt, embeddings)
 
 
-def build_decoder(opt, embeddings):
+def build_decoder(opt, embeddings, text_field):
     """
     Various decoder dispatcher function.
     Args:
@@ -75,7 +75,7 @@ def build_decoder(opt, embeddings):
     """
     dec_type = "ifrnn" if opt.decoder_type == "rnn" and opt.input_feed \
                else opt.decoder_type
-    return str2dec[dec_type].from_opt(opt, embeddings)
+    return str2dec[dec_type].from_opt(opt, embeddings, text_field)
 
 
 def load_test_model(opt, model_path=None):
@@ -144,7 +144,7 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
 
         tgt_emb.word_lut.weight = src_emb.word_lut.weight
 
-    decoder = build_decoder(model_opt, tgt_emb)
+    decoder = build_decoder(model_opt, tgt_emb, fields['word_topic'])
 
     # Build NMTModel(= encoder + decoder).
     if gpu and gpu_id is not None:
@@ -174,7 +174,7 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         vocab_size = len(tgt_base_field.vocab)
         pad_idx = tgt_base_field.vocab.stoi[tgt_base_field.pad_token]
         generator = CopyGenerator(model_opt.dec_rnn_size, vocab_size, pad_idx)
-
+    generator[0].weight = model.decoder.generator[0].weight
     # Load the model states from checkpoint or initialize them.
     if checkpoint is not None:
         # This preserves backward-compat for models using customed layernorm

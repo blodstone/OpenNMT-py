@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 
 from onmt.models.stacked_rnn import StackedLSTM, StackedGRU
+from torch.nn.utils.rnn import pack_padded_sequence as pack
 from onmt.modules import context_gate_factory, GlobalAttention, TopicAttention
+from onmt.modules.util_class import Cast
 from onmt.utils.rnn_factory import rnn_factory
 
 from onmt.utils.misc import aeq
@@ -20,7 +22,7 @@ class DecoderBase(nn.Module):
         self.attentional = attentional
 
     @classmethod
-    def from_opt(cls, opt, embeddings):
+    def from_opt(cls, opt, embeddings, text_field):
         """Alternate constructor.
 
         Subclasses should override this method.
@@ -83,7 +85,7 @@ class RNNDecoderBase(DecoderBase):
     def __init__(self, rnn_type, bidirectional_encoder, num_layers,
                  hidden_size, attn_type="general", attn_func="softmax",
                  coverage_attn=False, context_gate=None,
-                 copy_attn=False, dropout=0.0, embeddings=None,
+                 copy_attn=False, dropout=0.0, embeddings=None, text_field=None,
                  reuse_copy_attn=False, copy_attn_type="general"):
         super(RNNDecoderBase, self).__init__(
             attentional=attn_type != "none" and attn_type is not None)
@@ -92,6 +94,7 @@ class RNNDecoderBase(DecoderBase):
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.embeddings = embeddings
+        self.text_field = text_field
         self.dropout = nn.Dropout(dropout)
 
         # Decoder state
@@ -103,7 +106,12 @@ class RNNDecoderBase(DecoderBase):
                                    hidden_size=hidden_size,
                                    num_layers=num_layers,
                                    dropout=dropout)
-
+        vocab_size = len(self.text_field.base_field.vocab)
+        self.generator = nn.Sequential(
+            nn.Linear(self.hidden_size, vocab_size),
+            Cast(torch.float32),
+            nn.Softmax(dim=-1)
+        )
         # Set up the context gate.
         self.context_gate = None
         if context_gate is not None:
@@ -139,7 +147,7 @@ class RNNDecoderBase(DecoderBase):
             raise ValueError("Cannot reuse copy attention with no attention.")
 
     @classmethod
-    def from_opt(cls, opt, embeddings):
+    def from_opt(cls, opt, embeddings, text_field):
         """Alternate constructor."""
         return cls(
             opt.rnn_type,
@@ -153,6 +161,7 @@ class RNNDecoderBase(DecoderBase):
             opt.copy_attn,
             opt.dropout,
             embeddings,
+            text_field,
             opt.reuse_copy_attn,
             opt.copy_attn_type)
 
@@ -189,7 +198,15 @@ class RNNDecoderBase(DecoderBase):
         self.state["hidden"] = tuple(h.detach() for h in self.state["hidden"])
         self.state["input_feed"] = self.state["input_feed"].detach()
 
-    def forward(self, tgt, memory_bank, word_topic, memory_lengths=None, step=None):
+    def building_topic(self, word_topic, word_topic_length, topic_matrix):
+        lengths_list = word_topic_length.view(-1).tolist()
+        topic_emb = torch.squeeze(topic_matrix[word_topic])
+        return topic_emb
+
+    def forward(self, tgt, memory_bank,
+                word_topic, word_topic_length,
+                topic_matrix, memory_lengths=None,
+                step=None):
         """
         Args:
             tgt (LongTensor): sequences of padded tokens
@@ -207,9 +224,12 @@ class RNNDecoderBase(DecoderBase):
             * attns: distribution over src at each tgt
               ``(tgt_len, batch, src_len)``.
         """
+        topic_memory_bank = self.building_topic(
+            word_topic, word_topic_length, topic_matrix)
 
         dec_state, dec_outs, attns = self._run_forward_pass(
-            tgt, memory_bank, word_topic, memory_lengths=memory_lengths)
+            tgt, memory_bank, topic_memory_bank,
+            topic_matrix, memory_lengths=memory_lengths)
 
         # Update the state with the result.
         if not isinstance(dec_state, tuple):
@@ -350,7 +370,9 @@ class InputFeedRNNDecoder(RNNDecoderBase):
           G --> H
     """
 
-    def _run_forward_pass(self, tgt, memory_bank, word_topic, memory_lengths=None):
+    def _run_forward_pass(self, tgt, memory_bank,
+                          topic_memory_bank, topic_matrix,
+                          memory_lengths=None):
         """
         See StdRNNDecoder._run_forward_pass() for description
         of arguments and return values.
@@ -366,6 +388,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
         attns = {}
         if self.attn is not None:
             attns["std"] = []
+            attns["topic"] = []
         if self.copy_attn is not None or self._reuse_copy_attn:
             attns["copy"] = []
         if self._coverage:
@@ -383,12 +406,17 @@ class InputFeedRNNDecoder(RNNDecoderBase):
         for emb_t in emb.split(1):
             decoder_input = torch.cat([emb_t.squeeze(0), input_feed], 1)
             rnn_output, dec_state = self.rnn(decoder_input, dec_state)
+            rnn_topic = torch.multinomial(self.generator(rnn_output), 1)
+            rnn_topic = topic_matrix[rnn_topic]
             if self.attentional:
-                decoder_output, p_attn = self.attn(
+                decoder_output, p_attn, t_attn = self.attn(
                     rnn_output,
                     memory_bank.transpose(0, 1),
+                    rnn_topic,
+                    topic_memory_bank.transpose(0, 1),
                     memory_lengths=memory_lengths)
                 attns["std"].append(p_attn)
+                attns["topic"].append(t_attn)
             else:
                 decoder_output = rnn_output
             if self.context_gate is not None:
