@@ -156,25 +156,28 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
     model = onmt.models.NMTModel(encoder, decoder)
 
     # Build Generator.
+    # if not model_opt.copy_attn:
+    #     if model_opt.generator_function == "sparsemax":
+    #         gen_func = onmt.modules.sparse_activations.LogSparsemax(dim=-1)
+    #     else:
+    #         gen_func = nn.LogSoftmax(dim=-1)
+    #     generator = nn.Sequential(
+    #         nn.Linear(model_opt.dec_rnn_size,
+    #                   len(fields["tgt"].base_field.vocab)),
+    #         Cast(torch.float32),
+    #         gen_func
+    #     )
+    #     if model_opt.share_decoder_embeddings:
+    #         generator[0].weight = decoder.embeddings.word_lut.weight
+    # else:
     if not model_opt.copy_attn:
-        if model_opt.generator_function == "sparsemax":
-            gen_func = onmt.modules.sparse_activations.LogSparsemax(dim=-1)
-        else:
-            gen_func = nn.LogSoftmax(dim=-1)
-        generator = nn.Sequential(
-            nn.Linear(model_opt.dec_rnn_size,
-                      len(fields["tgt"].base_field.vocab)),
-            Cast(torch.float32),
-            gen_func
-        )
-        if model_opt.share_decoder_embeddings:
-            generator[0].weight = decoder.embeddings.word_lut.weight
+        generator = model.decoder.generator
     else:
         tgt_base_field = fields["tgt"].base_field
         vocab_size = len(tgt_base_field.vocab)
         pad_idx = tgt_base_field.vocab.stoi[tgt_base_field.pad_token]
         generator = CopyGenerator(model_opt.dec_rnn_size, vocab_size, pad_idx)
-    generator[0].weight = model.decoder.generator[0].weight
+    # generator[0].weight = model.decoder.generator[0].weight
     # Load the model states from checkpoint or initialize them.
     if checkpoint is not None:
         # This preserves backward-compat for models using customed layernorm
@@ -212,7 +215,7 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
             model.decoder.embeddings.load_pretrained_vectors(
                 model_opt.pre_word_vecs_dec)
 
-    model.generator = generator
+    model.generator = model.decoder.generator
     model.to(device)
     if model_opt.model_dtype == 'fp16':
         model.half()
