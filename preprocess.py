@@ -60,6 +60,8 @@ def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, lemma_reader
 
     for i, (src_shard, tgt_shard, topic_shard, lemma_shards) in enumerate(shard_pairs):
         assert len(src_shard) == len(tgt_shard)
+        if (len(src_shard) != len(topic_shard)):
+            print("Src: {}\n Topic: {}".format(len(src_shard), len(topic_shard)))
         assert len(src_shard) == len(topic_shard)
         logger.info("Building shard %d." % i)
         dataset = inputters.Dataset(

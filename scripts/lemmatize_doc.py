@@ -3,7 +3,7 @@ import json
 from stanfordcorenlp import StanfordCoreNLP
 
 nlp = StanfordCoreNLP(r'/home/acp16hh/Projects/Others/stanford-corenlp-full-2018-10-05')
-finished_files_dir = "../data/smallbbc-split"
+finished_files_dir = "../data/bbc-split"
 
 
 def parse_sentences(sentences):
@@ -54,13 +54,13 @@ def save_to_json(file_path, save_path, is_save=True):
     return all_pairs
 
 print('Processing train file:')
-all_pairs_src = save_to_json('../data/smallbbc-split/src.txt.train', "/src.train")
-all_pairs_tgt = save_to_json('../data/smallbbc-split/tgt.txt.train', "", False)
+all_pairs_src = save_to_json('../data/bbc-split/src.txt.train', "/src.train")
+all_pairs_tgt = save_to_json('../data/bbc-split/tgt.txt.train', "", False)
 all_pairs = '\n'.join(['{} {}'.format(pair[0], pair[1])
                        for pair in set(all_pairs_src + all_pairs_tgt)])
 f_lemma = open(finished_files_dir + '/src.train.pair', "w")
 f_lemma.write(all_pairs)
-# print('Processing validation file:')
-# save_to_json('../data/smallbbc-split/src.txt.validation', "/src.validation")
-# print('Processing test file:')
-# save_to_json('../data/smallbbc-split/src.txt.test', "/src.test")
+print('Processing validation file:')
+save_to_json('../data/smallbbc-split/src.txt.validation', "/src.validation")
+print('Processing test file:')
+save_to_json('../data/smallbbc-split/src.txt.test', "/src.test")
