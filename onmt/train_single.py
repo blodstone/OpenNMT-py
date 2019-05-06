@@ -73,8 +73,8 @@ def main(opt, device_id):
             lemma_stoi[pair[1].decode('utf-8')]
 
     logger.info('Loading topic matrix')
-    if device_id > 0:
-        topic_matrix = torch.load(opt.topic_matrix).to(device=device_id)
+    if device_id >= 0:
+        topic_matrix = torch.load(opt.topic_matrix, map_location=torch.device(device_id))
     else:
         topic_matrix = torch.load(opt.topic_matrix)
     # check for code where vocab is saved instead of fields
