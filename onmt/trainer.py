@@ -247,7 +247,7 @@ class Trainer(object):
                     logger.info('GpuRank %d: validate step %d'
                                 % (self.gpu_rank, step))
                 valid_stats = self.validate(
-                    valid_iter, topic_matrix, word_to_lemma, topic_matrix,
+                    valid_iter, topic_matrix, word_to_lemma,
                     moving_average=self.moving_average)
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: gather valid stat \
