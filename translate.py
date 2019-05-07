@@ -10,7 +10,7 @@ from onmt.translate.translator import build_translator
 
 import onmt.opts as opts
 from onmt.utils.parse import ArgumentParser
-
+import torch
 
 def main(opt):
     ArgumentParser.validate_translate_opts(opt)
@@ -20,13 +20,24 @@ def main(opt):
     src_shards = split_corpus(opt.src, opt.shard_size)
     tgt_shards = split_corpus(opt.tgt, opt.shard_size) \
         if opt.tgt is not None else repeat(None)
-    shard_pairs = zip(src_shards, tgt_shards)
-
-    for i, (src_shard, tgt_shard) in enumerate(shard_pairs):
+    lemma_shards = split_corpus(opt.lemma, opt.shard_size)
+    shard_pairs = zip(src_shards, tgt_shards, lemma_shards)
+    lemma_align = open(opt.lemma_align, 'rb').readlines()
+    if opt.gpu >= 0:
+        topic_matrix = torch.load(opt.topic_matrix,
+                                  map_location=torch.device(opt.gpu))
+    else:
+        topic_matrix = torch.load(opt.topic_matrix)
+    if not opt.fp32:
+        topic_matrix = topic_matrix.half()
+    for i, (src_shard, tgt_shard, lemma_shard) in enumerate(shard_pairs):
         logger.info("Translating shard %d." % i)
         translator.translate(
+            lemma_align=lemma_align,
+            topic_matrix=topic_matrix,
             src=src_shard,
             tgt=tgt_shard,
+            lemma=lemma_shard,
             src_dir=opt.src_dir,
             batch_size=opt.batch_size,
             attn_debug=opt.attn_debug

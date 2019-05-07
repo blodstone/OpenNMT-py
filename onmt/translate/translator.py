@@ -89,6 +89,7 @@ class Translator(object):
             fields,
             src_reader,
             tgt_reader,
+            word_topic_reader,
             gpu=-1,
             n_best=1,
             min_length=0,
@@ -146,6 +147,7 @@ class Translator(object):
             self._tgt_vocab.stoi[t] for t in self.ignore_when_blocking}
         self.src_reader = src_reader
         self.tgt_reader = tgt_reader
+        self.word_topic_reader = word_topic_reader
         self.replace_unk = replace_unk
         if self.replace_unk and not self.model.decoder.attentional:
             raise ValueError(
@@ -213,11 +215,13 @@ class Translator(object):
 
         src_reader = inputters.str2reader[opt.data_type].from_opt(opt)
         tgt_reader = inputters.str2reader["text"].from_opt(opt)
+        word_topic_reader = inputters.str2reader["text"].from_opt(opt)
         return cls(
             model,
             fields,
             src_reader,
             tgt_reader,
+            word_topic_reader,
             gpu=opt.gpu,
             n_best=opt.n_best,
             min_length=opt.min_length,
@@ -264,6 +268,9 @@ class Translator(object):
     def translate(
             self,
             src,
+            lemma,
+            lemma_align,
+            topic_matrix,
             tgt=None,
             src_dir=None,
             batch_size=None,
@@ -292,10 +299,10 @@ class Translator(object):
 
         data = inputters.Dataset(
             self.fields,
-            readers=([self.src_reader, self.tgt_reader]
-                     if tgt else [self.src_reader]),
-            data=[("src", src), ("tgt", tgt)] if tgt else [("src", src)],
-            dirs=[src_dir, None] if tgt else [src_dir],
+            readers=([self.src_reader, self.tgt_reader, self.word_topic_reader]
+                     if tgt else [self.src_reader, self.word_topic_reader]),
+            data=[("src", src), ("tgt", tgt), ("word_topic", lemma)] if tgt else [("src", src), ("word_topic", lemma)],
+            dirs=[src_dir, None, None] if tgt else [src_dir, None],
             sort_key=inputters.str2sortkey[self.data_type],
             filter_pred=self._filter_pred
         )
@@ -325,9 +332,25 @@ class Translator(object):
 
         start_time = time.time()
 
+        src_stoi = self._tgt_vocab.stoi
+        lemma_stoi = self._tgt_vocab.stoi
+        w2l = {}
+        word_to_lemma = []
+        for pair in lemma_align:
+            pair = pair.strip().split()
+            w2l[src_stoi[pair[0].decode('utf-8')]] = \
+                lemma_stoi[pair[1].decode('utf-8')]
+        w2l[src_stoi['unk']] = lemma_stoi['unk']
+        for index in range(len(self._tgt_vocab.itos)):
+            if index in w2l:
+                word_to_lemma.append(w2l[index])
+            else:
+                word_to_lemma.append(w2l[lemma_stoi['unk']])
+        word_to_lemma = torch.tensor(word_to_lemma)
+
         for batch in data_iter:
             batch_data = self.translate_batch(
-                batch, data.src_vocabs, attn_debug
+                batch, topic_matrix, word_to_lemma, data.src_vocabs, attn_debug
             )
             translations = xlation_builder.from_batch(batch_data)
 
@@ -500,7 +523,7 @@ class Translator(object):
         results["attention"] = random_sampler.attention
         return results
 
-    def translate_batch(self, batch, src_vocabs, attn_debug):
+    def translate_batch(self, batch, topic_matrix, word_to_lemma, src_vocabs, attn_debug):
         """Translate a batch of sentences."""
         with torch.no_grad():
             if self.beam_size == 1:
@@ -515,6 +538,8 @@ class Translator(object):
             else:
                 return self._translate_batch(
                     batch,
+                    topic_matrix,
+                    word_to_lemma,
                     src_vocabs,
                     self.max_length,
                     min_length=self.min_length,
@@ -541,6 +566,9 @@ class Translator(object):
             self,
             decoder_in,
             memory_bank,
+            word_to_lemma,
+            word_topic, word_topic_length,
+            topic_matrix,
             batch,
             src_vocabs,
             memory_lengths,
@@ -558,7 +586,9 @@ class Translator(object):
         # in case of inference tgt_len = 1, batch = beam times batch_size
         # in case of Gold Scoring tgt_len = actual length, batch = 1 batch
         dec_out, dec_attn = self.model.decoder(
-            decoder_in, memory_bank, memory_lengths=memory_lengths, step=step
+            decoder_in, memory_bank, word_to_lemma,
+                word_topic, word_topic_length,
+                topic_matrix, memory_lengths=memory_lengths, step=step
         )
 
         # Generator forward.
@@ -597,6 +627,8 @@ class Translator(object):
     def _translate_batch(
             self,
             batch,
+            topic_matrix,
+            word_to_lemma,
             src_vocabs,
             max_length,
             min_length=0,
@@ -657,13 +689,16 @@ class Translator(object):
             block_ngram_repeat=self.block_ngram_repeat,
             exclusion_tokens=self._exclusion_idxs,
             memory_lengths=memory_lengths)
-
+        word_topic, word_topic_length = batch.word_topic
         for step in range(max_length):
             decoder_input = beam.current_predictions.view(1, -1, 1)
 
             log_probs, attn = self._decode_and_generate(
                 decoder_input,
                 memory_bank,
+                word_to_lemma, word_topic,
+                word_topic_length,
+                topic_matrix,
                 batch,
                 src_vocabs,
                 memory_lengths=memory_lengths,

@@ -574,14 +574,19 @@ def translate_opts(parser):
     group = parser.add_argument_group('Data')
     group.add('--data_type', '-data_type', default="text",
               help="Type of the source input. Options: [text|img].")
-
+    group.add('--lemma-align', '-lemma-align', help="Path to lemma alignment")
     group.add('--src', '-src', required=True,
               help="Source sequence to decode (one line per "
                    "sequence)")
     group.add('--src_dir', '-src_dir', default="",
               help='Source directory for image or audio files')
+    group.add('--lemma', '-lemma', required=True,
+              help="Source lemma sequence to decode (one line per "
+                   "sequence)")
     group.add('--tgt', '-tgt',
               help='True target sequence (optional)')
+    group.add('--topic_matrix', '-topic_matrix',
+              help="Path to topic matrix")
     group.add('--shard_size', '-shard_size', type=int, default=10000,
               help="Divide src and tgt (if applicable) into "
                    "smaller multiple src and tgt files, then "
