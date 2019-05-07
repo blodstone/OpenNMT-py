@@ -247,7 +247,8 @@ class Trainer(object):
                     logger.info('GpuRank %d: validate step %d'
                                 % (self.gpu_rank, step))
                 valid_stats = self.validate(
-                    valid_iter, moving_average=self.moving_average)
+                    valid_iter, topic_matrix, word_to_lemma, topic_matrix,
+                    moving_average=self.moving_average)
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: gather valid stat \
                                 step %d' % (self.gpu_rank, step))
@@ -276,7 +277,7 @@ class Trainer(object):
             self.model_saver.save(step, moving_average=self.moving_average)
         return total_stats
 
-    def validate(self, valid_iter, moving_average=None):
+    def validate(self, valid_iter, topic_matrix, word_to_lemma, moving_average=None):
         """ Validate model.
             valid_iter: validate data iterator
         Returns:
@@ -301,9 +302,14 @@ class Trainer(object):
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                                    else (batch.src, None)
                 tgt = batch.tgt
-
+                doc_topic = batch.doc_topic
+                word_topic, word_topic_length = batch.word_topic
                 # F-prop through the model.
-                outputs, attns = valid_model(src, tgt, src_lengths)
+
+                outputs, attns = valid_model(src, tgt, src_lengths,
+                                             word_to_lemma, word_topic,
+                                             word_topic_length, doc_topic,
+                                             topic_matrix)
 
                 # Compute loss.
                 _, batch_stats = self.valid_loss(batch, outputs, attns)

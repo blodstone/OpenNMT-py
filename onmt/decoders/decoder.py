@@ -406,7 +406,11 @@ class InputFeedRNNDecoder(RNNDecoderBase):
         for emb_t in emb.split(1):
             decoder_input = torch.cat([emb_t.squeeze(0), input_feed], 1)
             rnn_output, dec_state = self.rnn(decoder_input, dec_state)
+            self.generator[0].weight.requires_grad = False
+            self.generator[0].bias.requires_grad = False
             rnn_topic = torch.multinomial(self.generator(rnn_output), 1)
+            self.generator[0].weight.requires_grad = True
+            self.generator[0].bias.requires_grad = True
             rnn_topic = topic_matrix[word_to_lemma[rnn_topic]]
             if self.attentional:
                 decoder_output, p_attn, t_attn = self.attn(

@@ -34,7 +34,7 @@ def test_rouge(cand, ref):
             with open(tmp_dir + "/reference/ref.{}.txt".format(i), "w",
                       encoding="utf-8") as f:
                 f.write(references[i])
-        r = pyrouge.Rouge155()
+        r = pyrouge.Rouge155(rouge_dir='/home/acp16hh/Projects/Others/ROUGE')
         r.model_dir = tmp_dir + "/reference/"
         r.system_dir = tmp_dir + "/candidate/"
         r.model_filename_pattern = 'ref.#ID#.txt'
