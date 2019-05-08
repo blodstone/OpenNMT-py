@@ -1,5 +1,4 @@
-"""Topic attention modules (Luong / Bahdanau)"""
-import random
+"""Global attention modules (Luong / Bahdanau)"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -82,6 +81,8 @@ class TopicAttention(nn.Module):
             "Please select a valid attention function.")
         self.attn_func = attn_func
 
+        self.linear_topic = nn.Linear(2*dim, dim, bias=True)
+
         if self.attn_type == "general":
             self.linear_in = nn.Linear(dim, dim, bias=False)
         elif self.attn_type == "mlp":
@@ -91,6 +92,7 @@ class TopicAttention(nn.Module):
         # mlp wants it with bias
         out_bias = self.attn_type == "mlp"
         self.linear_out = nn.Linear(dim * 2, dim, bias=out_bias)
+
         if coverage:
             self.linear_cover = nn.Linear(1, dim, bias=False)
 
@@ -179,9 +181,7 @@ class TopicAttention(nn.Module):
             memory_bank = torch.tanh(memory_bank)
 
         ## Topic alignment
-        query_topic = source_topic
-        enc_topic_bank = topic_bank
-        topic_align = self.score(query_topic, enc_topic_bank)
+        topic_align = self.score(source_topic, topic_bank)
         if memory_lengths is not None:
             mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
             mask = mask.unsqueeze(1)  # Make it broadcastable.
@@ -191,7 +191,7 @@ class TopicAttention(nn.Module):
             else:
                 topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
             topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
-            # c_topic = torch.bmm(topic_align_vectors, memory_bank)
+            c_topic = torch.bmm(topic_align_vectors, memory_bank)
 
         ## Global alignment
         # compute attention scores, as in Luong et al.
@@ -211,19 +211,13 @@ class TopicAttention(nn.Module):
 
         # each context vector c_t is the weighted average
         # over all the source hidden states
-        # mix the distribution between topic vectors and standard vectors
-        probs = torch.rand(batch, requires_grad=False, device=align_vectors.device)
-        mixed_align_vectors = torch.where(probs > 0.5,
-                                          torch.t(torch.squeeze(align_vectors)),
-                                          torch.t(torch.squeeze(topic_align_vectors)))
-        mixed_align_vectors = torch.unsqueeze(torch.t(mixed_align_vectors), 1)
-        c = torch.bmm(mixed_align_vectors, memory_bank)
+        c = torch.bmm(align_vectors, memory_bank)
 
         # concatenate topic context and context
-        # c = self.linear_topic(torch.cat((c, c_topic), dim=2))
+        c = self.linear_topic(torch.cat((c, c_topic), dim=2))
 
         # concatenate
-        concat_c = torch.cat([c, source], 2).view(batch * target_l, dim * 2)
+        concat_c = torch.cat([c, source], 2).view(batch*target_l, dim*2)
         attn_h = self.linear_out(concat_c).view(batch, target_l, dim)
         if self.attn_type in ["general", "dot"]:
             attn_h = torch.tanh(attn_h)
@@ -231,7 +225,7 @@ class TopicAttention(nn.Module):
         if one_step:
             attn_h = attn_h.squeeze(1)
             align_vectors = align_vectors.squeeze(1)
-            topic_align_vectors = topic_align_vectors.squeeze(1)
+
             # Check output sizes
             batch_, dim_ = attn_h.size()
             aeq(batch, batch_)
