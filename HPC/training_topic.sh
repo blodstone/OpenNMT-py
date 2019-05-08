@@ -12,8 +12,8 @@ WORK=/home/acp16hh/Topic_Summ
 DATA=/data/acp16hh/bbc-split
 MODEL=/data/acp16hh/models
 OUTPUT=/data/acp16hh/output
-module load apps/python/anaconda3-4.2.0
-module load libs/cudnn/6.0/binary-cuda-8.0.44
+module load apps/python/conda
+module load libs/cudnn/7.3.1.20/binary-cuda-9.0.176
 source activate freya
 
 python preprocess.py -train_src $DATA/src.train.token -train_topic $DATA/src.lda.train -train_lemma $DATA/src.train.lemma -train_tgt $DATA/tgt.txt.train -valid_src $DATA/src.validation.token -valid_tgt $DATA/tgt.txt.validation -valid_topic $DATA/src.lda.validation -valid_lemma $DATA/src.validation.lemma -save_data $DATA/topic-bbc-split -src_seq_length 10000 -tgt_seq_length 10000 -src_seq_length_trunc 400 -tgt_seq_length_trunc 100 -dynamic_dict -share_vocab -shard_size 100000
