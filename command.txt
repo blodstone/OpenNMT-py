@@ -2,9 +2,11 @@
 
 Baseline: See
 
-CUDA_VISIBLE_DEVICES=0 python train.py -save_model models/bbc-split -data data/bbc-split -copy_attn -global_attention mlp -word_vec_size 128 -rnn_size 512 -layers 1 -encoder_type brnn -train_steps 200000 -max_grad_norm 2 -dropout 0. -batch_size 16 -valid_batch_size 16 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -reuse_copy_attn -copy_loss_by_seqlength -bridge -seed 777 -world_size 0 -gpu_ranks 0 -log_file testout/train_see_01.log
+python preprocess.py -train_src data/bbc-split/src.train.token -train_tgt data/bbc-split/tgt.txt.train -valid_src data/bbc-split/src.validation.token -valid_tgt data/bbc-split/tgt.txt.validation -save_data data/bbc-split -src_seq_length 10000 -tgt_seq_length 10000 -src_seq_length_trunc 600 -tgt_seq_length_trunc 100 -dynamic_dict -share_vocab -shard_size 100000
 
-python translate.py -gpu 0 -batch_size 20 -beam_size 10 -model models/bbc-split_step_200000.pt -src data/src.test.token -output testout/bbc.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>" --report_rouge --replace_unk -log_file testout/translate_see_01.log
+CUDA_VISIBLE_DEVICES=0 python train.py -save_model models/bbc-split -data data/bbc-split -copy_attn -global_attention mlp -word_vec_size 128 -rnn_size 512 -layers 1 -encoder_type brnn -train_steps 200000 -max_grad_norm 2 -dropout 0. -batch_size 16 -valid_batch_size 16 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -reuse_copy_attn -copy_loss_by_seqlength -bridge -seed 777 -world_size 1 -gpu_ranks 0 -log_file testout/train_see_01.log
+
+CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 20 -beam_size 10 -model models/bbc-split_step_160000.pt -src data/src.test.token -output testout/bbc.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>" --report_rouge --replace_unk -log_file testout/translate_see_02.log
 
 ROUGE(1/2/3/L/SU4)
 25.05/5.50/1.72/18.58/6.44
