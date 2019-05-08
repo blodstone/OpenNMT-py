@@ -80,7 +80,7 @@ class TopicAttention(nn.Module):
         assert attn_func in ["softmax", "sparsemax"], (
             "Please select a valid attention function.")
         self.attn_func = attn_func
-
+        self.linear_topic_hidden = nn.Linear(512, self.dim, bias=True)
         self.linear_topic = nn.Linear(2*dim, dim, bias=True)
 
         if self.attn_type == "general":
@@ -181,7 +181,8 @@ class TopicAttention(nn.Module):
             memory_bank = torch.tanh(memory_bank)
 
         ## Topic alignment
-        topic_align = self.score(source_topic, topic_bank)
+
+        topic_align = self.score(self.linear_topic_hidden(source_topic), self.linear_topic_hidden(topic_bank))
         if memory_lengths is not None:
             mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
             mask = mask.unsqueeze(1)  # Make it broadcastable.
