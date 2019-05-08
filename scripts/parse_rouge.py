@@ -11,9 +11,9 @@ if __name__ == "__main__":
                         help='reference file')
     args = parser.parse_args()
     c_f = open(args.c).readlines()
-    c_str = [line.replace('<eos>','').replace('<sos>','').strip() for line in c_f]
+    c_str = [re.findall("<sos> (.*?) <eos>", line)[0].strip() for line in c_f]
     r_f = open(args.r).readlines()
-    r_str = [line.replace('<eos>','').replace('<sos>','').strip()  for line in r_f]
+    r_str = [re.findall("<sos> (.*?) <eos>", line)[0].strip() for line in r_f]
     c_out = open(args.output + 'candidate.txt', 'w')
     c_out.write('\n'.join(c_str))
     r_out = open(args.output + 'reference.txt', 'w')
