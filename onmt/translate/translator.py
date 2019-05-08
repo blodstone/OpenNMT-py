@@ -690,6 +690,7 @@ class Translator(object):
             exclusion_tokens=self._exclusion_idxs,
             memory_lengths=memory_lengths)
         word_topic, word_topic_length = batch.word_topic
+        word_topic = tile(word_topic, beam_size, dim=1)
         for step in range(max_length):
             decoder_input = beam.current_predictions.view(1, -1, 1)
 

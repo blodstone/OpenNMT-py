@@ -213,8 +213,12 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
                 model_opt.pre_word_vecs_dec)
 
     model.generator = generator
-    model.decoder.generator[0].weight = model.generator[0].weight
-    model.decoder.generator[0].bias = model.generator[0].bias
+    if not model_opt.copy_attn:
+        model.decoder.generator[0].weight = model.generator[0].weight
+        model.decoder.generator[0].bias = model.generator[0].bias
+    else:
+        model.decoder.generator[0].weight = model.generator.linear.weight
+        model.decoder.generator[0].bias = model.generator.linear.bias
     model.to(device)
     if model_opt.model_dtype == 'fp16':
         model.half()
