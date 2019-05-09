@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 from onmt.modules.sparse_activations import sparsemax
 from onmt.utils.misc import aeq, sequence_mask
-
+from onmt.utils.logging import logger
 # This class is mainly used by decoder.py for RNNs but also
 # by the CNN / transformer decoder when copy attention is used
 # CNN has its own attention mechanism ConvMultiStepAttention
@@ -181,8 +181,11 @@ class TopicAttention(nn.Module):
             memory_bank = torch.tanh(memory_bank)
 
         ## Topic alignment
-
-        topic_align = self.score(self.linear_topic_hidden(source_topic), self.linear_topic_hidden(topic_bank))
+        logger.info('Source topic size %s' % source_topic.size())
+        logger.info('Topic bank size %s' % topic_bank.size())
+        hidden_source_topic = self.linear_topic_hidden(source_topic)
+        hidden_topic_bank = self.linear_topic_hidden(topic_bank)
+        topic_align = self.score(hidden_source_topic, hidden_topic_bank)
         if memory_lengths is not None:
             mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
             mask = mask.unsqueeze(1)  # Make it broadcastable.
