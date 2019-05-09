@@ -181,8 +181,9 @@ class TopicAttention(nn.Module):
             memory_bank = torch.tanh(memory_bank)
 
         ## Topic alignment
-        logger.info('Source topic size {}'.format(source_topic.size()))
-        logger.info('Topic bank size {}'.format(topic_bank.size()))
+        if len(source_topic.size()) != 3 or len(topic_bank.size()) != 3:
+            logger.info('Source topic size {}:'.format(source_topic.size()))
+            logger.info('Topic bank size {}:'.format(topic_bank.size()))
         hidden_source_topic = self.linear_topic_hidden(source_topic)
         hidden_topic_bank = self.linear_topic_hidden(topic_bank)
         topic_align = self.score(hidden_source_topic, hidden_topic_bank)
