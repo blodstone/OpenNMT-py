@@ -184,8 +184,12 @@ class TopicAttention(nn.Module):
         if len(source_topic.size()) != 3 or len(topic_bank.size()) != 3:
             logger.info('Source topic size {}:'.format(source_topic.size()))
             logger.info('Topic bank size {}:'.format(topic_bank.size()))
-        hidden_source_topic = self.linear_topic_hidden(source_topic)
-        hidden_topic_bank = self.linear_topic_hidden(topic_bank)
+        try:
+            hidden_source_topic = self.linear_topic_hidden(source_topic)
+            hidden_topic_bank = self.linear_topic_hidden(topic_bank)
+        except:
+            logger.info('Source topic size {}:'.format(source_topic.size()))
+            logger.info('Topic bank size {}:'.format(topic_bank.size()))
         topic_align = self.score(hidden_source_topic, hidden_topic_bank)
         if memory_lengths is not None:
             mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
