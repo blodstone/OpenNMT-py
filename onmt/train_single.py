@@ -71,7 +71,7 @@ def main(opt, device_id):
     for pair in lemma_aligns:
         pair = pair.strip().split()
         w2l[src_stoi[pair[0].decode('utf-8')]] = \
-            lemma_stoi[pair[1].decode('utf-8')]
+            lemma_stoi[pair[1].decode('utf-8').lower()]
     w2l[src_stoi['unk']] = lemma_stoi['unk']
     for index in range(len(vocab['src'].base_field.vocab.itos)):
         if index in w2l:
