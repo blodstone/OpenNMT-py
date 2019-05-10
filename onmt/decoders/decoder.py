@@ -199,8 +199,7 @@ class RNNDecoderBase(DecoderBase):
         self.state["input_feed"] = self.state["input_feed"].detach()
 
     def building_topic(self, word_topic, word_topic_length, topic_matrix):
-        lengths_list = word_topic_length.view(-1).tolist()
-        topic_emb = torch.squeeze(topic_matrix[word_topic])
+        topic_emb = torch.squeeze(topic_matrix[word_topic], dim=2)
         return topic_emb
 
     def forward(self, tgt, memory_bank, word_to_lemma,
