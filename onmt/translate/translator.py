@@ -333,7 +333,7 @@ class Translator(object):
         start_time = time.time()
 
         src_stoi = self._tgt_vocab.stoi
-        lemma_stoi = self._tgt_vocab.stoi
+        lemma_stoi = data.fields['word_topic'].fields[0][1].vocab.stoi
         w2l = {}
         word_to_lemma = []
         for pair in lemma_align:
