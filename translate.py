@@ -28,8 +28,6 @@ def main(opt):
                                   map_location=torch.device(opt.gpu))
     else:
         topic_matrix = torch.load(opt.topic_matrix)
-    if not opt.fp32:
-        topic_matrix = topic_matrix.half()
     for i, (src_shard, tgt_shard, lemma_shard) in enumerate(shard_pairs):
         logger.info("Translating shard %d." % i)
         translator.translate(
