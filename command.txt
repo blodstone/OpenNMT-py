@@ -6,14 +6,14 @@ python preprocess.py -train_src data/bbc-split/src.train.token.lower -train_tgt 
 
 CUDA_VISIBLE_DEVICES=0 python train.py -save_model models/opennmt1024-bbc -data data/preprocess-bbc/bbc -copy_attn -global_attention mlp -word_vec_size 256 -rnn_size 1024 -layers 2 -encoder_type brnn -train_steps 200000 -max_grad_norm 2 -dropout 0. -batch_size 16 -valid_batch_size 16 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -reuse_copy_attn -copy_loss_by_seqlength -bridge -seed 777 -world_size 1 -gpu_ranks 0 -log_file testout/train_opennmt1024_01.log
 
-CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 40 -beam_size 10 -model models/save_models/opennmt1024_bbc_175000.pt -src data/bbc-split/src.validation.token -output testout/opennmt1024_bbc_validation.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>" -log_file testout/opennmt1024_bbc_validation_01.log
+CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 40 -beam_size 10 -model models/save_models/opennmt1024-bbc_step_170000.pt -src data/bbc-split/src.validation.token.lower -output out/opennmt1024_bbc_validation.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" -log_file out/translate_opennmt1024_val_01.log
 
-python parse_rouge.py -c ~/Projects/Research/Experiments/Exp_Freya_Topic_Summ/OpenNMT-py/testout/bbc.out -r ~/Projects/Research/Experiments/Exp_Freya_Topic_Summ/OpenNMT-py/data/bbc-split/src.txt.test -output ../testout/
+python parse_rouge.py -c ../out/opennmt1024_bbc_validation.out -r ../data/bbc-split/tgt.txt.validation -output_dir ../out -output_name opennmt1024
 
-python test_rouge.py -c testout/candidate.txt -r testout/reference.txt
+python test_rouge.py -c out/opennmt1024.c.txt -r out/opennmt1024.r.txt
 
-ROUGE(1/2/3/L/SU4)
-25.05/5.50/1.72/18.58/6.44
+OpenNMT1024 ROUGE(1/2/3/L/SU4): 27.88/7.76/2.85/20.96/7.96
+OpenNMT512 ROUGE(1/2/3/L/SU4): 25.05/5.50/1.72/18.58/6.44
 
 Our: Topic attention
 python topic_matrix_to_tensor.py -emb_file ../data/bbc-split/topic_matrix.lda -output_file ../data/bbc-split/topic_matrix.tensor -dict_file ../data/bbc-split.vocab.pt
