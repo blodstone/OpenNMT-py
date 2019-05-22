@@ -402,14 +402,15 @@ class InputFeedRNNDecoder(RNNDecoderBase):
 
         # Input feed concatenates hidden state with
         # input at every time step.
-        for emb_t in emb.split(1):
+        for idx_t, emb_t in enumerate(emb.split(1)):
             decoder_input = torch.cat([emb_t.squeeze(0), input_feed], 1)
             rnn_output, dec_state = self.rnn(decoder_input, dec_state)
-            self.generator[0].weight.requires_grad = False
-            self.generator[0].bias.requires_grad = False
-            rnn_topic = torch.multinomial(self.generator(rnn_output), 1)
-            self.generator[0].weight.requires_grad = True
-            self.generator[0].bias.requires_grad = True
+            # self.generator[0].weight.requires_grad = False
+            # self.generator[0].bias.requires_grad = False
+            # rnn_topic = torch.multinomial(self.generator(rnn_output), 1)
+            # self.generator[0].weight.requires_grad = True
+            # self.generator[0].bias.requires_grad = True
+            rnn_topic = tgt[idx_t]
             rnn_topic[rnn_topic > (topic_matrix.size(0) - 1)] = 0
             rnn_topic = topic_matrix[word_to_lemma[rnn_topic]]
             if self.attentional:

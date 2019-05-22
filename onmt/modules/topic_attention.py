@@ -138,7 +138,7 @@ class TopicAttention(nn.Module):
             return self.v(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
 
     def forward(self, source, memory_bank, source_topic, topic_bank,
-                memory_lengths=None, coverage=None):
+                memory_lengths=None, coverage=None, sample=None, fusion=None):
         """
 
         Args:
