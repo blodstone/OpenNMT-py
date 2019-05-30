@@ -301,7 +301,8 @@ def _build_field_vocab(field, counter, size_multiple=1, **kwargs):
     all_specials = [
         field.unk_token, field.pad_token, field.init_token, field.eos_token
     ]
-    specials = [tok for tok in all_specials if tok is not None]
+    # specials = [tok for tok in all_specials if tok is not None]
+    specials = all_specials
     field.vocab = field.vocab_cls(counter, specials=specials, **kwargs)
     if size_multiple > 1:
         _pad_vocab_to_multiple(field.vocab, size_multiple)

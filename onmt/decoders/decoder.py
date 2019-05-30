@@ -85,7 +85,7 @@ class RNNDecoderBase(DecoderBase):
     def __init__(self, rnn_type, bidirectional_encoder, num_layers,
                  hidden_size, attn_type="general", attn_func="softmax",
                  coverage_attn=False, context_gate=None,
-                 copy_attn=False, dropout=0.0, embeddings=None, text_field=None,
+                 copy_attn=False, dropout=0.0, embeddings=None,
                  reuse_copy_attn=False, copy_attn_type="general"):
         super(RNNDecoderBase, self).__init__(
             attentional=attn_type != "none" and attn_type is not None)
@@ -94,7 +94,6 @@ class RNNDecoderBase(DecoderBase):
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.embeddings = embeddings
-        self.text_field = text_field
         self.dropout = nn.Dropout(dropout)
 
         # Decoder state
@@ -106,12 +105,7 @@ class RNNDecoderBase(DecoderBase):
                                    hidden_size=hidden_size,
                                    num_layers=num_layers,
                                    dropout=dropout)
-        vocab_size = len(self.text_field.base_field.vocab)
-        self.generator = nn.Sequential(
-            nn.Linear(self.hidden_size, vocab_size),
-            Cast(torch.float32),
-            nn.Softmax(dim=-1)
-        )
+
         # Set up the context gate.
         self.context_gate = None
         if context_gate is not None:
@@ -147,7 +141,7 @@ class RNNDecoderBase(DecoderBase):
             raise ValueError("Cannot reuse copy attention with no attention.")
 
     @classmethod
-    def from_opt(cls, opt, embeddings, text_field):
+    def from_opt(cls, opt, embeddings):
         """Alternate constructor."""
         return cls(
             opt.rnn_type,
@@ -161,7 +155,6 @@ class RNNDecoderBase(DecoderBase):
             opt.copy_attn,
             opt.dropout,
             embeddings,
-            text_field,
             opt.reuse_copy_attn,
             opt.copy_attn_type)
 
@@ -405,21 +398,18 @@ class InputFeedRNNDecoder(RNNDecoderBase):
         for idx_t, emb_t in enumerate(emb.split(1)):
             decoder_input = torch.cat([emb_t.squeeze(0), input_feed], 1)
             rnn_output, dec_state = self.rnn(decoder_input, dec_state)
-            # self.generator[0].weight.requires_grad = False
-            # self.generator[0].bias.requires_grad = False
-            # rnn_topic = torch.multinomial(self.generator(rnn_output), 1)
-            # self.generator[0].weight.requires_grad = True
-            # self.generator[0].bias.requires_grad = True
             rnn_topic = tgt[idx_t]
             rnn_topic[rnn_topic > (topic_matrix.size(0) - 1)] = 0
-            rnn_topic = topic_matrix[word_to_lemma[rnn_topic]]
+            rnn_topic = topic_matrix[rnn_topic]
             if self.attentional:
                 decoder_output, p_attn, t_attn = self.attn(
                     rnn_output,
                     memory_bank.transpose(0, 1),
                     rnn_topic,
                     topic_memory_bank.transpose(0, 1),
-                    memory_lengths=memory_lengths)
+                    memory_lengths=memory_lengths,
+                    is_UNK_topic=torch.eq(topic_matrix[0], rnn_topic).all()
+                )
                 attns["std"].append(p_attn)
                 attns["topic"].append(t_attn)
             else:

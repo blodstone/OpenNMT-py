@@ -80,15 +80,17 @@ class TopicAttention(nn.Module):
         assert attn_func in ["softmax", "sparsemax"], (
             "Please select a valid attention function.")
         self.attn_func = attn_func
-        self.linear_topic_hidden = nn.Linear(512, self.dim, bias=True)
-        self.linear_topic = nn.Linear(2*dim, dim, bias=True)
 
         if self.attn_type == "general":
             self.linear_in = nn.Linear(dim, dim, bias=False)
+            self.linear_in_topic = nn.Linear(512, 512, bias=False)
         elif self.attn_type == "mlp":
             self.linear_context = nn.Linear(dim, dim, bias=False)
             self.linear_query = nn.Linear(dim, dim, bias=True)
             self.v = nn.Linear(dim, 1, bias=False)
+            self.linear_context_topic = nn.Linear(512, 512, bias=False)
+            self.linear_query_topic = nn.Linear(512, 512, bias=True)
+            self.v_topic = nn.Linear(512, 1, bias=False)
         # mlp wants it with bias
         out_bias = self.attn_type == "mlp"
         self.linear_out = nn.Linear(dim * 2, dim, bias=out_bias)
@@ -112,7 +114,6 @@ class TopicAttention(nn.Module):
         tgt_batch, tgt_len, tgt_dim = h_t.size()
         aeq(src_batch, tgt_batch)
         aeq(src_dim, tgt_dim)
-        aeq(self.dim, src_dim)
 
         if self.attn_type in ["general", "dot"]:
             if self.attn_type == "general":
@@ -137,7 +138,47 @@ class TopicAttention(nn.Module):
 
             return self.v(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
 
-    def forward(self, source, memory_bank, source_topic, topic_bank,
+    def score_topic(self, h_t, h_s):
+        """
+        Args:
+          h_t (FloatTensor): sequence of queries ``(batch, tgt_len, dim)``
+          h_s (FloatTensor): sequence of sources ``(batch, src_len, dim``
+
+        Returns:
+          FloatTensor: raw attention scores (unnormalized) for each src index
+            ``(batch, tgt_len, src_len)``
+        """
+
+        # Check input sizes
+        src_batch, src_len, src_dim = h_s.size()
+        tgt_batch, tgt_len, tgt_dim = h_t.size()
+        aeq(src_batch, tgt_batch)
+        aeq(src_dim, tgt_dim)
+
+        if self.attn_type in ["general", "dot"]:
+            if self.attn_type == "general":
+                h_t_ = h_t.view(tgt_batch * tgt_len, tgt_dim)
+                h_t_ = self.linear_in_topic(h_t_)
+                h_t = h_t_.view(tgt_batch, tgt_len, tgt_dim)
+            h_s_ = h_s.transpose(1, 2)
+            # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
+            return torch.bmm(h_t, h_s_)
+        else:
+            dim = 512
+            wq = self.linear_query_topic(h_t.view(-1, dim))
+            wq = wq.view(tgt_batch, tgt_len, 1, dim)
+            wq = wq.expand(tgt_batch, tgt_len, src_len, dim)
+
+            uh = self.linear_context_topic(h_s.contiguous().view(-1, dim))
+            uh = uh.view(src_batch, 1, src_len, dim)
+            uh = uh.expand(src_batch, tgt_len, src_len, dim)
+
+            # (batch, t_len, s_len, d)
+            wquh = torch.tanh(wq + uh)
+
+            return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
+
+    def forward(self, source, memory_bank, source_topic, topic_bank, is_UNK_topic=False,
                 memory_lengths=None, coverage=None, sample=None, fusion=None):
         """
 
@@ -180,21 +221,6 @@ class TopicAttention(nn.Module):
             memory_bank += self.linear_cover(cover).view_as(memory_bank)
             memory_bank = torch.tanh(memory_bank)
 
-        ## Topic alignment
-        hidden_source_topic = self.linear_topic_hidden(source_topic)
-        hidden_topic_bank = self.linear_topic_hidden(topic_bank)
-        topic_align = self.score(hidden_source_topic, hidden_topic_bank)
-        if memory_lengths is not None:
-            mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
-            mask = mask.unsqueeze(1)  # Make it broadcastable.
-            topic_align.masked_fill_(1 - mask, -float('inf'))
-            if self.attn_func == "softmax":
-                topic_align_vectors = F.softmax(topic_align.view(batch * target_l, source_l), -1)
-            else:
-                topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
-            topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
-            c_topic = torch.bmm(topic_align_vectors, memory_bank)
-
         ## Global alignment
         # compute attention scores, as in Luong et al.
         align = self.score(source, memory_bank)
@@ -214,10 +240,25 @@ class TopicAttention(nn.Module):
         # each context vector c_t is the weighted average
         # over all the source hidden states
         c = torch.bmm(align_vectors, memory_bank)
-
-        # concatenate topic context and context
-        c = self.linear_topic(torch.cat((c, c_topic), dim=2))
-
+        topic_align_vectors = align_vectors
+        if not is_UNK_topic:
+            ## Topic alignment
+            # Scaling by 10e7 to prevent buffer underflow
+            topic_align = self.score_topic(source_topic*10e7, topic_bank*10e7)
+            if memory_lengths is not None:
+                mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
+                mask = mask.unsqueeze(1)  # Make it broadcastable.
+                topic_align.masked_fill_(1 - mask, -float('inf'))
+                if self.attn_func == "softmax":
+                    topic_align_vectors = F.softmax(topic_align.view(batch * target_l, source_l), -1)
+                else:
+                    topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
+                topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
+                c_topic = torch.bmm(topic_align_vectors, memory_bank)
+            # concatenate topic context and context
+            # c = self.linear_topic(torch.cat((c, c_topic), dim=2))
+            theta = 0.5
+            c = theta*c + (1-theta)*c_topic
         # concatenate
         concat_c = torch.cat([c, source], 2).view(batch*target_l, dim*2)
         attn_h = self.linear_out(concat_c).view(batch, target_l, dim)
@@ -248,5 +289,4 @@ class TopicAttention(nn.Module):
             aeq(target_l, target_l_)
             aeq(batch, batch_)
             aeq(source_l, source_l_)
-
         return attn_h, align_vectors, topic_align_vectors

@@ -434,6 +434,8 @@ class Translator(object):
     def _translate_random_sampling(
             self,
             batch,
+            topic_matrix,
+            word_to_lemma,
             src_vocabs,
             max_length,
             min_length=0,
@@ -448,7 +450,7 @@ class Translator(object):
         assert self.block_ngram_repeat == 0
 
         batch_size = batch.batch_size
-
+        word_topic, word_topic_length = batch.word_topic
         # Encoder forward.
         src, enc_states, memory_bank, src_lengths = self._run_encoder(batch)
         self.model.decoder.init_state(src, memory_bank, enc_states)
@@ -485,6 +487,9 @@ class Translator(object):
             log_probs, attn = self._decode_and_generate(
                 decoder_input,
                 memory_bank,
+                word_to_lemma, word_topic,
+                word_topic_length,
+                topic_matrix,
                 batch,
                 src_vocabs,
                 memory_lengths=memory_lengths,
@@ -529,6 +534,8 @@ class Translator(object):
             if self.beam_size == 1:
                 return self._translate_random_sampling(
                     batch,
+                    topic_matrix,
+                    word_to_lemma,
                     src_vocabs,
                     self.max_length,
                     min_length=self.min_length,

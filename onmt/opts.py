@@ -331,7 +331,7 @@ def train_opts(parser):
               help='Use topic attention')
     group.add('--topic_matrix', '-topic_matrix',
               help="Path to topic matrix")
-    group.add('--lemma-align', '-lemma-align', help="Path to lemma alignment")
+    group.add('--lemma_align', '-lemma_align', help="Path to lemma alignment")
     group.add('--save_model', '-save_model', default='model',
               help="Model filename (the model will be saved as "
                    "<save_model>_N.pt where N is the number "

@@ -62,23 +62,6 @@ def main(opt, device_id):
         model_opt = opt
         vocab = torch.load(opt.data + '.vocab.pt')
 
-    logger.info('Loading alignment.')
-    lemma_aligns = open(model_opt.lemma_align, 'rb').readlines()
-    src_stoi = vocab['src'].base_field.vocab.stoi
-    lemma_stoi = vocab['word_topic'].base_field.vocab.stoi
-    w2l = {}
-    word_to_lemma = []
-    for pair in lemma_aligns:
-        pair = pair.strip().split()
-        w2l[src_stoi[pair[0].decode('utf-8')]] = \
-            lemma_stoi[pair[1].decode('utf-8').lower()]
-    w2l[src_stoi['unk']] = lemma_stoi['unk']
-    for index in range(len(vocab['src'].base_field.vocab.itos)):
-        if index in w2l:
-            word_to_lemma.append(w2l[index])
-        else:
-            word_to_lemma.append(w2l[lemma_stoi['unk']])
-    word_to_lemma = torch.tensor(word_to_lemma)
     logger.info('Loading topic matrix')
     if device_id >= 0:
         topic_matrix = torch.load(opt.topic_matrix, map_location=torch.device(device_id))
@@ -120,7 +103,6 @@ def main(opt, device_id):
 
     trainer = build_trainer(
         opt, device_id, model, fields, optim, model_saver=model_saver)
-
     train_iter = build_dataset_iter("train", fields, opt)
     valid_iter = build_dataset_iter(
         "valid", fields, opt, is_train=False)
@@ -135,7 +117,7 @@ def main(opt, device_id):
         train_steps = 0
     trainer.train(
         topic_matrix,
-        word_to_lemma,
+        dict(),
         train_iter,
         train_steps,
         save_checkpoint_steps=opt.save_checkpoint_steps,
