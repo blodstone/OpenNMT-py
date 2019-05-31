@@ -269,7 +269,6 @@ class Translator(object):
             self,
             src,
             lemma,
-            lemma_align,
             topic_matrix,
             tgt=None,
             src_dir=None,
@@ -332,25 +331,9 @@ class Translator(object):
 
         start_time = time.time()
 
-        src_stoi = self._tgt_vocab.stoi
-        lemma_stoi = data.fields['word_topic'].fields[0][1].vocab.stoi
-        w2l = {}
-        word_to_lemma = []
-        for pair in lemma_align:
-            pair = pair.strip().split()
-            w2l[src_stoi[pair[0].decode('utf-8')]] = \
-                lemma_stoi[pair[1].decode('utf-8')]
-        w2l[src_stoi['unk']] = lemma_stoi['unk']
-        for index in range(len(self._tgt_vocab.itos)):
-            if index in w2l:
-                word_to_lemma.append(w2l[index])
-            else:
-                word_to_lemma.append(w2l[lemma_stoi['unk']])
-        word_to_lemma = torch.tensor(word_to_lemma)
-
         for batch in data_iter:
             batch_data = self.translate_batch(
-                batch, topic_matrix, word_to_lemma, data.src_vocabs, attn_debug
+                batch, topic_matrix, data.src_vocabs, attn_debug
             )
             translations = xlation_builder.from_batch(batch_data)
 
@@ -435,7 +418,6 @@ class Translator(object):
             self,
             batch,
             topic_matrix,
-            word_to_lemma,
             src_vocabs,
             max_length,
             min_length=0,
@@ -487,7 +469,7 @@ class Translator(object):
             log_probs, attn = self._decode_and_generate(
                 decoder_input,
                 memory_bank,
-                word_to_lemma, word_topic,
+                word_topic,
                 word_topic_length,
                 topic_matrix,
                 batch,
@@ -528,14 +510,13 @@ class Translator(object):
         results["attention"] = random_sampler.attention
         return results
 
-    def translate_batch(self, batch, topic_matrix, word_to_lemma, src_vocabs, attn_debug):
+    def translate_batch(self, batch, topic_matrix, src_vocabs, attn_debug):
         """Translate a batch of sentences."""
         with torch.no_grad():
             if self.beam_size == 1:
                 return self._translate_random_sampling(
                     batch,
                     topic_matrix,
-                    word_to_lemma,
                     src_vocabs,
                     self.max_length,
                     min_length=self.min_length,
@@ -546,7 +527,6 @@ class Translator(object):
                 return self._translate_batch(
                     batch,
                     topic_matrix,
-                    word_to_lemma,
                     src_vocabs,
                     self.max_length,
                     min_length=self.min_length,
@@ -573,8 +553,8 @@ class Translator(object):
             self,
             decoder_in,
             memory_bank,
-            word_to_lemma,
-            word_topic, word_topic_length,
+            word_topic,
+            word_topic_length,
             topic_matrix,
             batch,
             src_vocabs,
@@ -593,7 +573,7 @@ class Translator(object):
         # in case of inference tgt_len = 1, batch = beam times batch_size
         # in case of Gold Scoring tgt_len = actual length, batch = 1 batch
         dec_out, dec_attn = self.model.decoder(
-            decoder_in, memory_bank, word_to_lemma,
+            decoder_in, memory_bank,
                 word_topic, word_topic_length,
                 topic_matrix, memory_lengths=memory_lengths, step=step
         )
@@ -635,7 +615,6 @@ class Translator(object):
             self,
             batch,
             topic_matrix,
-            word_to_lemma,
             src_vocabs,
             max_length,
             min_length=0,
@@ -704,7 +683,7 @@ class Translator(object):
             log_probs, attn = self._decode_and_generate(
                 decoder_input,
                 memory_bank,
-                word_to_lemma, word_topic,
+                word_topic,
                 word_topic_length,
                 topic_matrix,
                 batch,

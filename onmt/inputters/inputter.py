@@ -16,7 +16,7 @@ from torchtext.vocab import Vocab
 from onmt.inputters.text_dataset import text_fields, TextMultiField
 from onmt.inputters.image_dataset import image_fields
 from onmt.inputters.audio_dataset import audio_fields
-from onmt.inputters.topic_dataset import DocTopicField, WordTopicField
+from onmt.inputters.topic_dataset import DocTopicField
 from onmt.utils.logging import logger
 # backwards compatibility
 from onmt.inputters.text_dataset import _feature_tokenize  # noqa: F401
@@ -100,7 +100,6 @@ def get_fields(
         "Data type not implemented"
     assert not dynamic_dict or src_data_type == 'text', \
         'it is not possible to use dynamic_dict with non-text input'
-
     fields = {}
 
     fields_getters = {"text": text_fields,
@@ -120,7 +119,7 @@ def get_fields(
 
     tgt_field_kwargs = {"n_feats": n_tgt_feats,
                         "include_lengths": False,
-                        "pad": pad, "bos": None, "eos": None,
+                        "pad": pad, "bos": bos, "eos": eos,
                         "truncate": tgt_truncate,
                         "base_name": "tgt",
                         "lower": lower}
@@ -301,8 +300,8 @@ def _build_field_vocab(field, counter, size_multiple=1, **kwargs):
     all_specials = [
         field.unk_token, field.pad_token, field.init_token, field.eos_token
     ]
-    # specials = [tok for tok in all_specials if tok is not None]
-    specials = all_specials
+    specials = [tok for tok in all_specials if tok is not None]
+    # specials = all_specials
     field.vocab = field.vocab_cls(counter, specials=specials, **kwargs)
     if size_multiple > 1:
         _pad_vocab_to_multiple(field.vocab, size_multiple)
@@ -334,7 +333,7 @@ def _build_fv_from_multifield(multifield, counters, build_fv_args,
 def build_vocab(train_dataset_files, fields, data_type, share_vocab,
                 src_vocab_path, src_vocab_size, src_words_min_frequency,
                 tgt_vocab_path, tgt_vocab_size, tgt_words_min_frequency,
-                lemma_vocab_path, lemma_vocab_size, lemma_words_min_frequency,
+                lemma_vocab_path=None,
                 vocab_size_multiple=1):
     """Build the fields for all data sides.
 
@@ -427,7 +426,7 @@ def build_vocab(train_dataset_files, fields, data_type, share_vocab,
     build_fv_args["tgt"] = dict(
         max_size=tgt_vocab_size, min_freq=tgt_words_min_frequency)
     build_fv_args["word_topic"] = dict(
-        max_size=lemma_vocab_size, min_freq=lemma_words_min_frequency)
+        max_size=src_vocab_size, min_freq=src_words_min_frequency)
 
     word_topic_multifield = fields["word_topic"]
     _build_fv_from_multifield(

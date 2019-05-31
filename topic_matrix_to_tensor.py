@@ -16,10 +16,6 @@ def main():
                         help="Pair dictionary")
     opt = parser.parse_args()
     fields = torch.load(opt.dict_file)
-    try:
-        lemma_vocab = fields['word_topic'].base_field.vocab
-    except AttributeError:
-        lemma_vocab = fields['word_topic'].vocab
     tgt_vocab = fields['src'].base_field.vocab
     with open(opt.emb_file, 'rb') as f:
         embs = pickle.load(f)
@@ -34,7 +30,7 @@ def main():
         else:
             w2l[word].append(lemma)
     dim = len(six.next(six.itervalues(embs)))
-    tensor = torch.zeros((len(lemma_vocab), dim))
+    tensor = torch.zeros((len(tgt_vocab), dim))
     i = 1
     words = []
     for idx, word in enumerate(tgt_vocab.itos):

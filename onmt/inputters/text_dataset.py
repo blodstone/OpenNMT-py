@@ -3,7 +3,6 @@ from functools import partial
 
 import six
 import torch
-import re
 from torchtext.data import Field, RawField
 
 from onmt.inputters.datareader_base import DataReaderBase
@@ -62,26 +61,13 @@ def _feature_tokenize(
     Returns:
         List[str] of tokens.
     """
+
     tokens = string.split(tok_delim)
     if truncate is not None:
         tokens = tokens[:truncate]
     if feat_delim is not None:
         tokens = [t.split(feat_delim)[layer] for t in tokens]
     return tokens
-    # if sent_truncate:
-    #     # Assumption that each sentence is split by <sos> and <eos>
-    #     sentences = re.findall("<sos> (.*?) <eos>", string)
-    #     sentences = sentences[:sent_truncate]
-    #     tokens = []
-    #     for sent in sentences:
-    #         tokens.extend(sent.split(tok_delim))
-    # else:
-    #     tokens = string.split(tok_delim)
-    # if truncate is not None:
-    #     tokens = tokens[:truncate]
-    # if feat_delim is not None:
-    #     tokens = [t.split(feat_delim)[layer] for t in tokens]
-    # return tokens
 
 
 class TextMultiField(RawField):

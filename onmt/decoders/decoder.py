@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
+import matplotlib.pyplot as plt
+plt.switch_backend('agg')
 
 from onmt.models.stacked_rnn import StackedLSTM, StackedGRU
-from torch.nn.utils.rnn import pack_padded_sequence as pack
 from onmt.modules import context_gate_factory, GlobalAttention, TopicAttention
-from onmt.modules.util_class import Cast
 from onmt.utils.rnn_factory import rnn_factory
 
 from onmt.utils.misc import aeq
@@ -22,7 +22,7 @@ class DecoderBase(nn.Module):
         self.attentional = attentional
 
     @classmethod
-    def from_opt(cls, opt, embeddings, text_field):
+    def from_opt(cls, opt, embeddings):
         """Alternate constructor.
 
         Subclasses should override this method.
@@ -195,8 +195,8 @@ class RNNDecoderBase(DecoderBase):
         topic_emb = torch.squeeze(topic_matrix[word_topic], dim=2)
         return topic_emb
 
-    def forward(self, tgt, memory_bank, word_to_lemma,
-                word_topic, word_topic_length,
+    def forward(self, tgt, memory_bank,
+                topic_memory_bank,
                 topic_matrix, memory_lengths=None,
                 step=None):
         """
@@ -216,12 +216,11 @@ class RNNDecoderBase(DecoderBase):
             * attns: distribution over src at each tgt
               ``(tgt_len, batch, src_len)``.
         """
-        topic_memory_bank = self.building_topic(
-            word_topic, word_topic_length, topic_matrix)
 
         dec_state, dec_outs, attns = self._run_forward_pass(
-            tgt, memory_bank, word_to_lemma, topic_memory_bank,
+            tgt, memory_bank, topic_memory_bank,
             topic_matrix, memory_lengths=memory_lengths)
+
 
         # Update the state with the result.
         if not isinstance(dec_state, tuple):
@@ -362,7 +361,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
           G --> H
     """
 
-    def _run_forward_pass(self, tgt, memory_bank, word_to_lemma,
+    def _run_forward_pass(self, tgt, memory_bank,
                           topic_memory_bank, topic_matrix,
                           memory_lengths=None):
         """

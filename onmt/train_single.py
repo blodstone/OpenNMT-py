@@ -117,7 +117,6 @@ def main(opt, device_id):
         train_steps = 0
     trainer.train(
         topic_matrix,
-        dict(),
         train_iter,
         train_steps,
         save_checkpoint_steps=opt.save_checkpoint_steps,

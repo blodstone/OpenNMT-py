@@ -152,8 +152,6 @@ def model_opts(parser):
     group.add('--transformer_ff', '-transformer_ff', type=int, default=2048,
               help='Size of hidden transformer feed-forward')
 
-
-
     # Generator and loss options.
     group.add('--copy_attn', '-copy_attn', action="store_true",
               help='Train copy attention layer.')
@@ -237,9 +235,6 @@ def preprocess_opts(parser):
     group.add('--tgt_vocab', '-tgt_vocab', default="",
               help="Path to an existing target vocabulary. Format: "
                    "one word per line.")
-    group.add('--lemma_vocab', '-lemma_vocab', default="",
-              help="Path to an existing lemma vocabulary. Format: "
-                   "one word per line.")
     group.add('--features_vocabs_prefix', '-features_vocabs_prefix',
               type=str, default='',
               help="Path prefix to existing features vocabularies")
@@ -247,8 +242,6 @@ def preprocess_opts(parser):
               help="Size of the source vocabulary")
     group.add('--tgt_vocab_size', '-tgt_vocab_size', type=int, default=50000,
               help="Size of the target vocabulary")
-    group.add('--lemma_vocab_size', '-lemma_vocab_size', type=int, default=50000,
-              help="Size of the lemma vocabulary")
     group.add('--vocab_size_multiple', '-vocab_size_multiple',
               type=int, default=1,
               help="Make the vocabulary size a multiple of this value")
@@ -257,8 +250,6 @@ def preprocess_opts(parser):
               '-src_words_min_frequency', type=int, default=0)
     group.add('--tgt_words_min_frequency',
               '-tgt_words_min_frequency', type=int, default=0)
-    group.add('--lemma_words_min_frequency',
-              '-lemma_words_min_frequency', type=int, default=0)
 
     group.add('--dynamic_dict', '-dynamic_dict', action='store_true',
               help="Create dynamic dictionaries")
@@ -327,11 +318,8 @@ def train_opts(parser):
     group.add('--data', '-data', required=True,
               help='Path prefix to the ".train.pt" and '
                    '".valid.pt" file path from preprocess.py')
-    group.add('--topic_attn', '-topic_attn', action="store_true",
-              help='Use topic attention')
     group.add('--topic_matrix', '-topic_matrix',
               help="Path to topic matrix")
-    group.add('--lemma_align', '-lemma_align', help="Path to lemma alignment")
     group.add('--save_model', '-save_model', default='model',
               help="Model filename (the model will be saved as "
                    "<save_model>_N.pt where N is the number "
@@ -574,7 +562,6 @@ def translate_opts(parser):
     group = parser.add_argument_group('Data')
     group.add('--data_type', '-data_type', default="text",
               help="Type of the source input. Options: [text|img].")
-    group.add('--lemma-align', '-lemma-align', help="Path to lemma alignment")
     group.add('--src', '-src', required=True,
               help="Source sequence to decode (one line per "
                    "sequence)")

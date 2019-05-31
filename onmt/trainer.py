@@ -179,7 +179,6 @@ class Trainer(object):
 
     def train(self,
               topic_matrix,
-              word_to_lemma,
               train_iter,
               train_steps,
               save_checkpoint_steps=5000,
@@ -230,7 +229,7 @@ class Trainer(object):
                                     .all_gather_list
                                     (normalization))
 
-            self._gradient_accumulation(topic_matrix, word_to_lemma,
+            self._gradient_accumulation(topic_matrix,
                 batches, normalization, total_stats,
                 report_stats)
 
@@ -247,7 +246,7 @@ class Trainer(object):
                     logger.info('GpuRank %d: validate step %d'
                                 % (self.gpu_rank, step))
                 valid_stats = self.validate(
-                    valid_iter, topic_matrix, word_to_lemma,
+                    valid_iter, topic_matrix,
                     moving_average=self.moving_average)
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: gather valid stat \
@@ -277,7 +276,7 @@ class Trainer(object):
             self.model_saver.save(step, moving_average=self.moving_average)
         return total_stats
 
-    def validate(self, valid_iter, topic_matrix, word_to_lemma, moving_average=None):
+    def validate(self, valid_iter, topic_matrix, moving_average=None):
         """ Validate model.
             valid_iter: validate data iterator
         Returns:
@@ -306,8 +305,7 @@ class Trainer(object):
                 word_topic, word_topic_length = batch.word_topic
                 # F-prop through the model.
 
-                outputs, attns = valid_model(src, tgt, src_lengths,
-                                             word_to_lemma, word_topic,
+                outputs, attns = valid_model(src, tgt, src_lengths, word_topic,
                                              word_topic_length, doc_topic,
                                              topic_matrix)
 
@@ -325,8 +323,7 @@ class Trainer(object):
 
         return stats
 
-    def _gradient_accumulation(self, topic_matrix, word_to_lemma,
-                               true_batches, normalization, total_stats,
+    def _gradient_accumulation(self, topic_matrix, true_batches, normalization, total_stats,
                                report_stats):
         if self.accum_count > 1:
             self.optim.zero_grad()
@@ -357,8 +354,7 @@ class Trainer(object):
                 if self.accum_count == 1:
                     self.optim.zero_grad()
 
-                outputs, attns = self.model(src, tgt, src_lengths, word_to_lemma,
-                                            word_topic, word_topic_length,
+                outputs, attns = self.model(src, tgt, src_lengths, word_topic, word_topic_length,
                                             doc_topic, topic_matrix, bptt=bptt)
                 bptt = True
 
