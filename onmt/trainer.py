@@ -354,8 +354,7 @@ class Trainer(object):
                 if self.accum_count == 1:
                     self.optim.zero_grad()
 
-                outputs, attns = self.model(src, tgt, src_lengths, word_topic, word_topic_length,
-                                            doc_topic, topic_matrix, bptt=bptt)
+                outputs, attns = self.model(src, tgt, src_lengths, word_topic, word_topic_length, doc_topic, topic_matrix, bptt=bptt)
                 bptt = True
 
                 # 3. Compute loss.

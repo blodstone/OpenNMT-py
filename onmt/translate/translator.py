@@ -435,6 +435,7 @@ class Translator(object):
         word_topic, word_topic_length = batch.word_topic
         # Encoder forward.
         src, enc_states, memory_bank, src_lengths = self._run_encoder(batch)
+        topic_memory_bank = torch.squeeze(topic_matrix[src], dim=2)
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
         use_src_map = self.copy_attn
@@ -469,8 +470,7 @@ class Translator(object):
             log_probs, attn = self._decode_and_generate(
                 decoder_input,
                 memory_bank,
-                word_topic,
-                word_topic_length,
+                topic_memory_bank,
                 topic_matrix,
                 batch,
                 src_vocabs,
@@ -553,8 +553,7 @@ class Translator(object):
             self,
             decoder_in,
             memory_bank,
-            word_topic,
-            word_topic_length,
+            topic_memory_bank,
             topic_matrix,
             batch,
             src_vocabs,
@@ -574,7 +573,7 @@ class Translator(object):
         # in case of Gold Scoring tgt_len = actual length, batch = 1 batch
         dec_out, dec_attn = self.model.decoder(
             decoder_in, memory_bank,
-                word_topic, word_topic_length,
+                topic_memory_bank,
                 topic_matrix, memory_lengths=memory_lengths, step=step
         )
 
@@ -631,6 +630,7 @@ class Translator(object):
 
         # (1) Run the encoder on the src.
         src, enc_states, memory_bank, src_lengths = self._run_encoder(batch)
+        topic_memory_bank = torch.squeeze(topic_matrix[src], dim=2)
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
         results = {
@@ -675,16 +675,13 @@ class Translator(object):
             block_ngram_repeat=self.block_ngram_repeat,
             exclusion_tokens=self._exclusion_idxs,
             memory_lengths=memory_lengths)
-        word_topic, word_topic_length = batch.word_topic
-        word_topic = tile(word_topic, beam_size, dim=1)
         for step in range(max_length):
             decoder_input = beam.current_predictions.view(1, -1, 1)
 
             log_probs, attn = self._decode_and_generate(
                 decoder_input,
                 memory_bank,
-                word_topic,
-                word_topic_length,
+                topic_memory_bank,
                 topic_matrix,
                 batch,
                 src_vocabs,
