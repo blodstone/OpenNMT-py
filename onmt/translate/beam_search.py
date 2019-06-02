@@ -123,12 +123,19 @@ class BeamSearch(DecodeStrategy):
 
         # using integer division to get an integer _B without casting
         _B = log_probs.shape[0] // self.beam_size
+        theta = 0.5
+        if isinstance(attn, tuple):
+            standard_attn = attn[0]
+            topic_attn = attn[1]
+            attn = theta*attn[0] + (1-theta)*attn[1]
+
 
         if self._stepwise_cov_pen and self._prev_penalty is not None:
             self.topk_log_probs += self._prev_penalty
             self.topk_log_probs -= self.global_scorer.cov_penalty(
                 self._coverage + attn, self.global_scorer.beta).view(
                 _B, self.beam_size)
+
 
         # force the output to be longer than self.min_length
         step = len(self)
@@ -168,8 +175,12 @@ class BeamSearch(DecodeStrategy):
              self.topk_ids.view(_B * self.beam_size, 1)], -1)
         if self.return_attention or self._cov_pen:
             current_attn = attn.index_select(1, self.select_indices)
+            std_current_attn = standard_attn.index_select(1, self.select_indices)
+            topic_current_attn = topic_attn.index_select(1, self.select_indices)
             if step == 1:
                 self.alive_attn = current_attn
+                self.alive_std_attn = std_current_attn
+                self.alive_topic_attn = topic_current_attn
                 # update global state (step == 1)
                 if self._cov_pen:  # coverage penalty
                     self._prev_penalty = torch.zeros_like(self.topk_log_probs)
@@ -177,7 +188,13 @@ class BeamSearch(DecodeStrategy):
             else:
                 self.alive_attn = self.alive_attn.index_select(
                     1, self.select_indices)
+                self.alive_std_attn = self.alive_std_attn.index_select(
+                    1, self.select_indices)
+                self.alive_topic_attn = self.alive_topic_attn.index_select(
+                    1, self.select_indices)
                 self.alive_attn = torch.cat([self.alive_attn, current_attn], 0)
+                self.alive_std_attn = torch.cat([self.alive_std_attn, std_current_attn], 0)
+                self.alive_topic_attn = torch.cat([self.alive_topic_attn, topic_current_attn], 0)
                 # update global state (step > 1)
                 if self._cov_pen:
                     self._coverage = self._coverage.index_select(
@@ -211,6 +228,14 @@ class BeamSearch(DecodeStrategy):
             self.alive_attn.view(
                 step - 1, _B_old, self.beam_size, self.alive_attn.size(-1))
             if self.alive_attn is not None else None)
+        std_attention = (
+            self.alive_std_attn.view(
+                step - 1, _B_old, self.beam_size, self.alive_std_attn.size(-1))
+            if self.alive_std_attn is not None else None)
+        topic_attention = (
+            self.alive_topic_attn.view(
+                step - 1, _B_old, self.beam_size, self.alive_topic_attn.size(-1))
+            if self.alive_topic_attn is not None else None)
         non_finished_batch = []
         for i in range(self.is_finished.size(0)):
             b = self._batch_offset[i]
@@ -225,7 +250,12 @@ class BeamSearch(DecodeStrategy):
                     self.topk_scores[i, j],
                     predictions[i, j, 1:],  # Ignore start_token.
                     attention[:, i, j, :self._memory_lengths[i]]
-                    if attention is not None else None))
+                    if attention is not None else None,
+                    std_attention[:, i, j, :self._memory_lengths[i]]
+                    if std_attention is not None else None,
+                    topic_attention[:, i, j, :self._memory_lengths[i]]
+                    if topic_attention is not None else None
+                ))
             # End condition is the top beam finished and we can return
             # n_best hypotheses.
             if self.ratio > 0:
@@ -238,13 +268,17 @@ class BeamSearch(DecodeStrategy):
             if finish_flag and len(self.hypotheses[b]) >= self.n_best:
                 best_hyp = sorted(
                     self.hypotheses[b], key=lambda x: x[0], reverse=True)
-                for n, (score, pred, attn) in enumerate(best_hyp):
+                for n, (score, pred, attn, std_attn, topic_attn) in enumerate(best_hyp):
                     if n >= self.n_best:
                         break
                     self.scores[b].append(score)
                     self.predictions[b].append(pred)
                     self.attention[b].append(
                         attn if attn is not None else [])
+                    self.std_attention[b].append(
+                        std_attn if std_attn is not None else [])
+                    self.topic_attention[b].append(
+                        topic_attn if topic_attn is not None else [])
             else:
                 non_finished_batch.append(i)
         non_finished = torch.tensor(non_finished_batch)
@@ -270,6 +304,10 @@ class BeamSearch(DecodeStrategy):
         if self.alive_attn is not None:
             inp_seq_len = self.alive_attn.size(-1)
             self.alive_attn = attention.index_select(1, non_finished) \
+                .view(step - 1, _B_new * self.beam_size, inp_seq_len)
+            self.std_attn = std_attention.index_select(1, non_finished) \
+                .view(step - 1, _B_new * self.beam_size, inp_seq_len)
+            self.topic_attn = topic_attention.index_select(1, non_finished) \
                 .view(step - 1, _B_new * self.beam_size, inp_seq_len)
             if self._cov_pen:
                 self._coverage = self._coverage \

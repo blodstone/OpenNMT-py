@@ -67,6 +67,8 @@ class DecodeStrategy(object):
         self.predictions = [[] for _ in range(batch_size)]
         self.scores = [[] for _ in range(batch_size)]
         self.attention = [[] for _ in range(batch_size)]
+        self.std_attention = [[] for _ in range(batch_size)]
+        self.topic_attention = [[] for _ in range(batch_size)]
 
         self.alive_seq = torch.full(
             [batch_size * parallel_paths, 1], self.bos,
@@ -75,6 +77,8 @@ class DecodeStrategy(object):
             [batch_size, parallel_paths],
             dtype=torch.uint8, device=device)
         self.alive_attn = None
+        self.std_alive_attn = None
+        self.topic_alive_attn = None
 
         self.min_length = min_length
         self.max_length = max_length

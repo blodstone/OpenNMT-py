@@ -42,6 +42,13 @@ ROUGE(1/2/3/L/SU4)
 27.24/8.01
 
 ######
-Our: Topic attention using debug dataset
+Our: OpenNMT and Topic attention using debug dataset
 ######
+--
+OpenNMT
+--
+CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 20 -beam_size 10 -model models/save_models/opennmt1024-bbc_step_170000.pt -src data/bbc-split/src.debug.token.lower -output out/opennmt1024-bbc_debug.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>"
+--
+Topic Attention
+--
 CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 20 -beam_size 10 -model models/save_models/topic1024-bbc+ss+avg_step_170000.pt -src data/bbc-split/src.debug.token.lower -lemma data/bbc-split/src.debug.lemma.lower -topic_matrix data/bbc-split/topic_matrix.tensor -output out/topic1024-bbc+ss+avg_debug.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>"

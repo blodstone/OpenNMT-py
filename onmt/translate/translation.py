@@ -62,10 +62,12 @@ class TranslationBuilder(object):
                len(translation_batch["predictions"]))
         batch_size = batch.batch_size
 
-        preds, pred_score, attn, gold_score, indices = list(zip(
+        preds, pred_score, attn, std_attn, topic_attn, gold_score, indices = list(zip(
             *sorted(zip(translation_batch["predictions"],
                         translation_batch["scores"],
                         translation_batch["attention"],
+                        translation_batch["std_attention"],
+                        translation_batch["topic_attention"],
                         translation_batch["gold_score"],
                         batch.indices.data),
                     key=lambda x: x[-1])))
@@ -102,7 +104,7 @@ class TranslationBuilder(object):
 
             translation = Translation(
                 src[:, b] if src is not None else None,
-                src_raw, pred_sents, attn[b], pred_score[b],
+                src_raw, pred_sents, attn[b], std_attn[b], topic_attn[b], pred_score[b],
                 gold_sent, gold_score[b]
             )
             translations.append(translation)
@@ -124,15 +126,17 @@ class Translation(object):
         gold_score (List[float]): Log-prob of gold translation.
     """
 
-    __slots__ = ["src", "src_raw", "pred_sents", "attns", "pred_scores",
+    __slots__ = ["src", "src_raw", "pred_sents", "attns", "std_attns", "topic_attns", "pred_scores",
                  "gold_sent", "gold_score"]
 
     def __init__(self, src, src_raw, pred_sents,
-                 attn, pred_scores, tgt_sent, gold_score):
+                 attn, std_attn, topic_attn, pred_scores, tgt_sent, gold_score):
         self.src = src
         self.src_raw = src_raw
         self.pred_sents = pred_sents
         self.attns = attn
+        self.std_attns = std_attn
+        self.topic_attns = topic_attn
         self.pred_scores = pred_scores
         self.gold_sent = tgt_sent
         self.gold_score = gold_score

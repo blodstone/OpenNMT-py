@@ -8,7 +8,9 @@ import time
 from itertools import count
 
 import torch
-
+import matplotlib.pyplot as plt
+plt.switch_backend('agg')
+import matplotlib.ticker as ticker
 import onmt.model_builder
 import onmt.translate.beam
 import onmt.inputters as inputters
@@ -18,6 +20,13 @@ from onmt.translate.random_sampling import RandomSampling
 from onmt.utils.misc import tile, set_random_seed
 from onmt.modules.copy_generator import collapse_copy_scores
 
+def showPlot(points):
+    plt.figure()
+    fig, ax = plt.subplots()
+    # this locator puts ticks at regular intervals
+    loc = ticker.MultipleLocator(base=0.2)
+    ax.yaxis.set_major_locator(loc)
+    plt.plot(points)
 
 def build_translator(opt, report_score=True, logger=None, out_file=None):
     if out_file is None:
@@ -265,6 +274,22 @@ class Translator(object):
             gs = [0] * batch_size
         return gs
 
+    def showAttention(self, input_sentence, output_words, attentions, name):
+        # Set up figure with colorbar
+        fig = plt.figure(figsize=(23, 16))
+        ax = fig.add_subplot(111)
+        cax = ax.matshow(attentions.numpy(), cmap='bone')
+        fig.colorbar(cax)
+
+        # Set up axes
+        ax.set_xticklabels(input_sentence, rotation=90)
+        ax.set_yticklabels(output_words)
+
+        # Show label at every tick
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+        fig.savefig(name+'.png')
+
     def translate(
             self,
             src,
@@ -363,6 +388,8 @@ class Translator(object):
                     preds = trans.pred_sents[0]
                     preds.append('</s>')
                     attns = trans.attns[0].tolist()
+                    std_attns = trans.std_attns[0].tolist()
+                    topic_attns = trans.topic_attns[0].tolist()
                     if self.data_type == 'text':
                         srcs = trans.src_raw
                     else:
@@ -370,6 +397,7 @@ class Translator(object):
                     header_format = "{:>10.10} " + "{:>10.7} " * len(srcs)
                     row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
                     output = header_format.format("", *srcs) + '\n'
+                    output += "Mixture Attention: \n"
                     for word, row in zip(preds, attns):
                         max_index = row.index(max(row))
                         row_format = row_format.replace(
@@ -378,6 +406,27 @@ class Translator(object):
                             "{:*>10.7f} ", "{:>10.7f} ", max_index)
                         output += row_format.format(word, *row) + '\n'
                         row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
+                    output += "Standard Attention: \n"
+                    for word, row in zip(preds, std_attns):
+                        max_index = row.index(max(row))
+                        row_format = row_format.replace(
+                            "{:>10.7f} ", "{:*>10.7f} ", max_index + 1)
+                        row_format = row_format.replace(
+                            "{:*>10.7f} ", "{:>10.7f} ", max_index)
+                        output += row_format.format(word, *row) + '\n'
+                        row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
+                    output += "Topic Attention: \n"
+                    for word, row in zip(preds, topic_attns):
+                        max_index = row.index(max(row))
+                        row_format = row_format.replace(
+                            "{:>10.7f} ", "{:*>10.7f} ", max_index + 1)
+                        row_format = row_format.replace(
+                            "{:*>10.7f} ", "{:>10.7f} ", max_index)
+                        output += row_format.format(word, *row) + '\n'
+                        row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
+                    self.showAttention(srcs, preds, trans.attns[0].cpu(), 'mixture')
+                    self.showAttention(srcs, preds, trans.std_attns[0].cpu(), 'std')
+                    self.showAttention(srcs, preds, trans.topic_attns[0].cpu(), 'topic')
                     if self.logger:
                         self.logger.info(output)
                     else:
@@ -494,8 +543,11 @@ class Translator(object):
                 if isinstance(memory_bank, tuple):
                     memory_bank = tuple(x.index_select(1, select_indices)
                                         for x in memory_bank)
+                    topic_memory_bank = tuple(x.index_select(1, select_indices)
+                                        for x in topic_memory_bank)
                 else:
                     memory_bank = memory_bank.index_select(1, select_indices)
+                    topic_memory_bank = topic_memory_bank.index_select(1, select_indices)
 
                 memory_lengths = memory_lengths.index_select(0, select_indices)
 
@@ -583,6 +635,10 @@ class Translator(object):
                 attn = dec_attn["std"]
             else:
                 attn = None
+            if "topic" in dec_attn:
+                topic_attn = dec_attn["topic"]
+            else:
+                topic_attn = None
             log_probs = self.model.generator(dec_out.squeeze(0))
             # returns [(batch_size x beam_size) , vocab ] when 1 step
             # or [ tgt_len, batch_size, vocab ] when full sentence
@@ -608,7 +664,7 @@ class Translator(object):
             log_probs = scores.squeeze(0).log()
             # returns [(batch_size x beam_size) , vocab ] when 1 step
             # or [ tgt_len, batch_size, vocab ] when full sentence
-        return log_probs, attn
+        return log_probs, (attn, topic_attn)
 
     def _translate_batch(
             self,
@@ -651,10 +707,12 @@ class Translator(object):
 
         if isinstance(memory_bank, tuple):
             memory_bank = tuple(tile(x, beam_size, dim=1) for x in memory_bank)
+            topic_memory_bank = tuple(tile(x, beam_size, dim=1) for x in topic_memory_bank)
             mb_device = memory_bank[0].device
         else:
             memory_bank = tile(memory_bank, beam_size, dim=1)
             mb_device = memory_bank.device
+            topic_memory_bank = tile(topic_memory_bank, beam_size, dim=1)
         memory_lengths = tile(src_lengths, beam_size)
 
         # (0) pt 2, prep the beam object
@@ -704,8 +762,11 @@ class Translator(object):
                 if isinstance(memory_bank, tuple):
                     memory_bank = tuple(x.index_select(1, select_indices)
                                         for x in memory_bank)
+                    topic_memory_bank = tuple(x.index_select(1, select_indices)
+                                        for x in topic_memory_bank)
                 else:
                     memory_bank = memory_bank.index_select(1, select_indices)
+                    topic_memory_bank = topic_memory_bank.index_select(1, select_indices)
 
                 memory_lengths = memory_lengths.index_select(0, select_indices)
 
@@ -718,6 +779,8 @@ class Translator(object):
         results["scores"] = beam.scores
         results["predictions"] = beam.predictions
         results["attention"] = beam.attention
+        results["std_attention"] = beam.std_attention
+        results["topic_attention"] = beam.topic_attention
         return results
 
     # This is left in the code for now, but unsued
@@ -812,6 +875,8 @@ class Translator(object):
             results["predictions"].append(hyps)
             results["scores"].append(scores)
             results["attention"].append(attn)
+            results["std_attention"].append(b.standard_attn)
+            results["topic_attention"].append(b.topic_attn)
 
         return results
 

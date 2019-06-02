@@ -154,7 +154,6 @@ class TopicAttention(nn.Module):
         tgt_batch, tgt_len, tgt_dim = h_t.size()
         aeq(src_batch, tgt_batch)
         aeq(src_dim, tgt_dim)
-
         if self.attn_type in ["general", "dot"]:
             if self.attn_type == "general":
                 h_t_ = h_t.view(tgt_batch * tgt_len, tgt_dim)
@@ -268,6 +267,7 @@ class TopicAttention(nn.Module):
         if one_step:
             attn_h = attn_h.squeeze(1)
             align_vectors = align_vectors.squeeze(1)
+            topic_align_vectors = topic_align_vectors.squeeze(1)
 
             # Check output sizes
             batch_, dim_ = attn_h.size()
@@ -280,6 +280,7 @@ class TopicAttention(nn.Module):
         else:
             attn_h = attn_h.transpose(0, 1).contiguous()
             align_vectors = align_vectors.transpose(0, 1).contiguous()
+            topic_align_vectors = topic_align_vectors.transpose(0, 1).contiguous()
             # Check output sizes
             target_l_, batch_, dim_ = attn_h.size()
             aeq(target_l, target_l_)
