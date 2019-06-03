@@ -123,11 +123,10 @@ class BeamSearch(DecodeStrategy):
 
         # using integer division to get an integer _B without casting
         _B = log_probs.shape[0] // self.beam_size
-        theta = 0.5
         if isinstance(attn, tuple):
             standard_attn = attn[0]
             topic_attn = attn[1]
-            attn = theta*attn[0] + (1-theta)*attn[1]
+            attn = attn[2]
 
 
         if self._stepwise_cov_pen and self._prev_penalty is not None:

@@ -177,7 +177,7 @@ class TopicAttention(nn.Module):
 
             return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
 
-    def forward(self, source, memory_bank, source_topic, topic_bank, is_UNK_topic=False,
+    def forward(self, source, memory_bank, source_topic, topic_bank, unk_topic,
                 memory_lengths=None, coverage=None, sample=None, fusion=None):
         """
 
@@ -236,28 +236,31 @@ class TopicAttention(nn.Module):
             align_vectors = sparsemax(align.view(batch*target_l, source_l), -1)
         align_vectors = align_vectors.view(batch, target_l, source_l)
 
+
+        ## Topic alignment
+        # Scaling by 10e7 to prevent buffer underflow
+        topic_align = self.score_topic(source_topic*10e7, topic_bank*10e7)
+        if memory_lengths is not None:
+            mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
+            mask = mask.unsqueeze(1)  # Make it broadcastable.
+            topic_align.masked_fill_(1 - mask, -float('inf'))
+            if self.attn_func != "softmax":
+                topic_align_vectors = F.softmax(topic_align.view(batch * target_l, source_l), -1)
+            else:
+                topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
+            theta = 0.5
+            topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
+            mixture_align_vectors = theta * align_vectors + (1-theta) * topic_align_vectors
+            # Replace unk_topic with standard attention
+            unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
+            # for idx, value in enumerate(unk_idx):
+            #     if value == 1:
+            #         mixture_align_vectors[idx] = align_vectors[idx]
+            #         topic_align_vectors[idx] = align_vectors[idx]
         # each context vector c_t is the weighted average
         # over all the source hidden states
-        c = torch.bmm(align_vectors, memory_bank)
-        topic_align_vectors = align_vectors
-        if not is_UNK_topic:
-            ## Topic alignment
-            # Scaling by 10e7 to prevent buffer underflow
-            topic_align = self.score_topic(source_topic*10e7, topic_bank*10e7)
-            if memory_lengths is not None:
-                mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
-                mask = mask.unsqueeze(1)  # Make it broadcastable.
-                topic_align.masked_fill_(1 - mask, -float('inf'))
-                if self.attn_func == "softmax":
-                    topic_align_vectors = F.softmax(topic_align.view(batch * target_l, source_l), -1)
-                else:
-                    topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
-                topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
-                c_topic = torch.bmm(topic_align_vectors, memory_bank)
-            # concatenate topic context and context
-            # c = self.linear_topic(torch.cat((c, c_topic), dim=2))
-            theta = 0.5
-            c = theta*c + (1-theta)*c_topic
+        c = torch.bmm(mixture_align_vectors, memory_bank)
+
         # concatenate
         concat_c = torch.cat([c, source], 2).view(batch*target_l, dim*2)
         attn_h = self.linear_out(concat_c).view(batch, target_l, dim)
@@ -267,6 +270,7 @@ class TopicAttention(nn.Module):
         if one_step:
             attn_h = attn_h.squeeze(1)
             align_vectors = align_vectors.squeeze(1)
+            mixture_align_vectors = mixture_align_vectors.squeeze(1)
             topic_align_vectors = topic_align_vectors.squeeze(1)
 
             # Check output sizes
@@ -281,6 +285,7 @@ class TopicAttention(nn.Module):
             attn_h = attn_h.transpose(0, 1).contiguous()
             align_vectors = align_vectors.transpose(0, 1).contiguous()
             topic_align_vectors = topic_align_vectors.transpose(0, 1).contiguous()
+            mixture_align_vectors = mixture_align_vectors.transpose(0, 1).contiguous()
             # Check output sizes
             target_l_, batch_, dim_ = attn_h.size()
             aeq(target_l, target_l_)
@@ -290,4 +295,4 @@ class TopicAttention(nn.Module):
             aeq(target_l, target_l_)
             aeq(batch, batch_)
             aeq(source_l, source_l_)
-        return attn_h, align_vectors, topic_align_vectors
+        return attn_h, align_vectors, topic_align_vectors, mixture_align_vectors

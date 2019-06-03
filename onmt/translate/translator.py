@@ -282,12 +282,14 @@ class Translator(object):
         fig.colorbar(cax)
 
         # Set up axes
+        ax.set_xticks(range(len(input_sentence)))
         ax.set_xticklabels(input_sentence, rotation=90)
+        ax.set_yticks(range(len(output_words)+1))
         ax.set_yticklabels(output_words)
 
         # Show label at every tick
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-        ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+        # ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+        # ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
         fig.savefig(name+'.png')
 
     def translate(
@@ -385,8 +387,9 @@ class Translator(object):
                         os.write(1, output.encode('utf-8'))
 
                 if attn_debug:
-                    preds = trans.pred_sents[0]
+                    preds = ['<s>'] + trans.pred_sents[0]
                     preds.append('</s>')
+                    preds = [word + '*' if torch.eq(topic_matrix[batch.dataset.fields['src'].base_field.vocab.stoi[word]], topic_matrix[0]).all() else word for word in preds]
                     attns = trans.attns[0].tolist()
                     std_attns = trans.std_attns[0].tolist()
                     topic_attns = trans.topic_attns[0].tolist()
@@ -394,43 +397,56 @@ class Translator(object):
                         srcs = trans.src_raw
                     else:
                         srcs = [str(item) for item in range(len(attns[0]))]
+                    srcs = [word + '*' if torch.eq(topic_matrix[batch.dataset.fields['src'].base_field.vocab.stoi[word]], topic_matrix[0]).all() else word for word in srcs]
+
                     header_format = "{:>10.10} " + "{:>10.7} " * len(srcs)
                     row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
-                    output = header_format.format("", *srcs) + '\n'
-                    output += "Mixture Attention: \n"
+                    output_mixture = header_format.format("", *srcs) + '\n'
+                    output_mixture += "Mixture Attention: \n"
                     for word, row in zip(preds, attns):
                         max_index = row.index(max(row))
                         row_format = row_format.replace(
                             "{:>10.7f} ", "{:*>10.7f} ", max_index + 1)
                         row_format = row_format.replace(
                             "{:*>10.7f} ", "{:>10.7f} ", max_index)
-                        output += row_format.format(word, *row) + '\n'
+                        output_mixture += row_format.format(word, *row) + '\n'
                         row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
-                    output += "Standard Attention: \n"
+                    output_std = header_format.format("", *srcs) + '\n'
+                    output_std += "Standard Attention: \n"
                     for word, row in zip(preds, std_attns):
                         max_index = row.index(max(row))
                         row_format = row_format.replace(
                             "{:>10.7f} ", "{:*>10.7f} ", max_index + 1)
                         row_format = row_format.replace(
                             "{:*>10.7f} ", "{:>10.7f} ", max_index)
-                        output += row_format.format(word, *row) + '\n'
+                        output_std += row_format.format(word, *row) + '\n'
                         row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
-                    output += "Topic Attention: \n"
+                    output_topic = header_format.format("", *srcs) + '\n'
+                    output_topic += "Topic Attention: \n"
                     for word, row in zip(preds, topic_attns):
                         max_index = row.index(max(row))
                         row_format = row_format.replace(
                             "{:>10.7f} ", "{:*>10.7f} ", max_index + 1)
                         row_format = row_format.replace(
                             "{:*>10.7f} ", "{:>10.7f} ", max_index)
-                        output += row_format.format(word, *row) + '\n'
+                        output_topic += row_format.format(word, *row) + '\n'
                         row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
                     self.showAttention(srcs, preds, trans.attns[0].cpu(), 'mixture')
                     self.showAttention(srcs, preds, trans.std_attns[0].cpu(), 'std')
                     self.showAttention(srcs, preds, trans.topic_attns[0].cpu(), 'topic')
-                    if self.logger:
-                        self.logger.info(output)
-                    else:
-                        os.write(1, output.encode('utf-8'))
+                    mixtureF = open('mixture_attn.txt', 'w')
+                    mixtureF.write(output_mixture)
+                    mixtureF.close()
+                    stdF = open('std_attn.txt', 'w')
+                    stdF.write(output_std)
+                    stdF.close()
+                    topicF = open('topic_attn.txt', 'w')
+                    topicF.write(output_topic)
+                    topicF.close()
+                    # if self.logger:
+                    #     self.logger.info(output)
+                    # else:
+                    #     os.write(1, output.encode('utf-8'))
 
         end_time = time.time()
 
@@ -639,6 +655,10 @@ class Translator(object):
                 topic_attn = dec_attn["topic"]
             else:
                 topic_attn = None
+            if "mixture" in dec_attn:
+                mixture_attn = dec_attn["mixture"]
+            else:
+                mixture_attn = None
             log_probs = self.model.generator(dec_out.squeeze(0))
             # returns [(batch_size x beam_size) , vocab ] when 1 step
             # or [ tgt_len, batch_size, vocab ] when full sentence
@@ -664,7 +684,7 @@ class Translator(object):
             log_probs = scores.squeeze(0).log()
             # returns [(batch_size x beam_size) , vocab ] when 1 step
             # or [ tgt_len, batch_size, vocab ] when full sentence
-        return log_probs, (attn, topic_attn)
+        return log_probs, (attn, topic_attn, mixture_attn)
 
     def _translate_batch(
             self,

@@ -29,17 +29,17 @@ python preprocess.py -train_src data/bbc-split/src.train.token.lower -train_topi
 
 CUDA_VISIBLE_DEVICES=0 python train.py -save_model models/topic1024-bbc+ss+avg -data data/preprocess-bbc-split/bbc_topic -global_attention mlp -word_vec_size 256 -rnn_size 1024 -layers 2 -encoder_type brnn -train_steps 300000 -max_grad_norm 2 -dropout 0. -batch_size 16 -valid_batch_size 16 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -seed 777 -topic_matrix data/bbc-split/topic_matrix.tensor -bridge -world_size 0 -gpu_ranks 0 -reuse_copy_attn -copy_loss_by_seqlength -log_file out/train_topic1024-bbc+ss+avg_02.log
 
-CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 50 -beam_size 10 -model models/save_models/topic1024-bbc+ss+avg_step_220000.pt -src data/bbc-split/src.validation.token.lower -lemma data/bbc-split/src.validation.lemma.lower -topic_matrix data/bbc-split/topic_matrix.tensor -output out/topic1024-bbc+ss+avg_step_220000.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>"
+CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 50 -beam_size 10 -model models/save_models/topic1024-bbc+ss+avg_step_220000.pt -src data/bbc-split/src.validation.token.lower -lemma data/bbc-split/src.validation.lemma.lower -topic_matrix data/bbc-split/topic_matrix.tensor -output out/topic1024-bbc+ss+avg.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>"
 
-python parse_rouge.py -c ../testout/bbc_test.out -r ../data/bbc-split/tgt.txt.test -output_dir ../testout -output_name topic512+es+cl
+python parse_rouge.py -c ../out/topic1024-bbc+ss+avg.out -r ../data/bbc-split/tgt.txt.validation.lower -output_dir ../out -output_name topic1024-bbc+ss+avg
 
-python test_rouge.py -c testout/topic512+es+cl.c.txt -r testout/topic512+es+cl.r.txt
+python test_rouge.py -c out/topic1024-bbc+ss+avg.c.txt -r out/topic1024-bbc+ss+avg.r.txt
 [2019-05-06 21:31:11,078 INFO] encoder: 7322624
 [2019-05-06 21:31:11,078 INFO] decoder: 35990868
 [2019-05-06 21:31:11,078 INFO] * number of parameters: 43313492
 
-ROUGE(1/2/3/L/SU4)
-27.24/8.01
+topic1024-bbc+ss+avg lower ROUGE(1/2/3/L/SU4): 24.08/6.38/2.48/18.51/6.39
+
 
 ######
 Our: OpenNMT and Topic attention using debug dataset
@@ -51,4 +51,4 @@ CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 20 -beam_size 10 -
 --
 Topic Attention
 --
-CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 20 -beam_size 10 -model models/save_models/topic1024-bbc+ss+avg_step_170000.pt -src data/bbc-split/src.debug.token.lower -lemma data/bbc-split/src.debug.lemma.lower -topic_matrix data/bbc-split/topic_matrix.tensor -output out/topic1024-bbc+ss+avg_debug.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>"
+CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 20 -beam_size 10 -model models/save_models/topic1024-bbc+ss+avg_step_220000.pt -src data/bbc-split/src.debug.token.lower -lemma data/bbc-split/src.debug.lemma.lower -topic_matrix data/bbc-split/topic_matrix.tensor -output out/topic1024-bbc+ss+avg_debug.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>"

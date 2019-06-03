@@ -3,7 +3,7 @@ file_token = open('/home/acp16hh/Projects/Research/Experiments/Exp_Freya_Topic_S
 file_tgt = open('/home/acp16hh/Projects/Research/Experiments/Exp_Freya_Topic_Summ/Topic_Summ/data/bbc-split/tgt.txt.validation')
 
 lemma_len = [len(sent.split()) for sent in file_lemma.readlines()]
-lemma_idx_sorted = [i[0] for i in sorted(enumerate(lemma_len), key=lambda x:x[1]) if i[1] > 80][2:3]
+lemma_idx_sorted = [i[0] for i in sorted(enumerate(lemma_len), key=lambda x:x[1]) if i[1] > 80][12:13]
 
 file_lemma = open('/home/acp16hh/Projects/Research/Experiments/Exp_Freya_Topic_Summ/Topic_Summ/data/bbc-split/src.validation.lemma.lower')
 f_lemma = file_lemma.readlines()

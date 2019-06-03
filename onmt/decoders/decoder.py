@@ -380,6 +380,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
         if self.attn is not None:
             attns["std"] = []
             attns["topic"] = []
+            attns["mixture"] = []
         if self.copy_attn is not None or self._reuse_copy_attn:
             attns["copy"] = []
         if self._coverage:
@@ -400,17 +401,19 @@ class InputFeedRNNDecoder(RNNDecoderBase):
             rnn_topic = tgt[idx_t]
             rnn_topic[rnn_topic > (topic_matrix.size(0) - 1)] = 0
             rnn_topic = topic_matrix[rnn_topic]
+            unk_topic = topic_matrix[0]
             if self.attentional:
-                decoder_output, p_attn, t_attn = self.attn(
+                decoder_output, p_attn, t_attn, m_attn = self.attn(
                     rnn_output,
                     memory_bank.transpose(0, 1),
                     rnn_topic,
                     topic_memory_bank.transpose(0, 1),
-                    memory_lengths=memory_lengths,
-                    is_UNK_topic=torch.eq(topic_matrix[0], rnn_topic).all()
+                    unk_topic,
+                    memory_lengths=memory_lengths
                 )
                 attns["std"].append(p_attn)
                 attns["topic"].append(t_attn)
+                attns["mixture"].append(m_attn)
             else:
                 decoder_output = rnn_output
             if self.context_gate is not None:
