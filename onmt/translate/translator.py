@@ -275,17 +275,39 @@ class Translator(object):
         return gs
 
     def showAttention(self, input_sentence, output_words, attentions, name):
+        attn, std_attn, topic_attn = attentions
         # Set up figure with colorbar
-        fig = plt.figure(figsize=(23, 16))
-        ax = fig.add_subplot(111)
-        cax = ax.matshow(attentions.numpy(), cmap='bone')
-        fig.colorbar(cax)
+        fig, axes = plt.subplots(2, 2, figsize=(46, 23))
+        ax = axes[0, 0]
+        ax_2 = axes[0, 1]
+        ax_3 = axes[1, 1]
+        # fig = plt.figure(figsize=(23, 16))
+        # ax = fig.add_subplots(111)
+        # ax_2 = fig.add_subplots(112)
+        # ax_3 = fig.add_subplots(113)
+        cax = ax.matshow(attn.numpy(), cmap='bone', vmin=0, vmax=1)
+        ax_2.matshow(std_attn.numpy(), cmap='bone', vmin=0, vmax=1)
+        ax_3.matshow(topic_attn.numpy(), cmap='bone', vmin=0, vmax=1)
+        fig.colorbar(cax, ax=axes, orientation='horizontal', fraction=0.1)
 
         # Set up axes
+        ax.set_title('Mixture')
         ax.set_xticks(range(len(input_sentence)))
         ax.set_xticklabels(input_sentence, rotation=90)
         ax.set_yticks(range(len(output_words)+1))
         ax.set_yticklabels(output_words)
+
+        ax_2.set_title('Standard')
+        ax_2.set_xticks(range(len(input_sentence)))
+        ax_2.set_xticklabels(input_sentence, rotation=90)
+        ax_2.set_yticks(range(len(output_words)+1))
+        ax_2.set_yticklabels(output_words)
+
+        ax_3.set_title('Topic')
+        ax_3.set_xticks(range(len(input_sentence)))
+        ax_3.set_xticklabels(input_sentence, rotation=90)
+        ax_3.set_yticks(range(len(output_words) + 1))
+        ax_3.set_yticklabels(output_words)
 
         # Show label at every tick
         # ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
@@ -431,9 +453,13 @@ class Translator(object):
                             "{:*>10.7f} ", "{:>10.7f} ", max_index)
                         output_topic += row_format.format(word, *row) + '\n'
                         row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
-                    self.showAttention(srcs, preds, trans.attns[0].cpu(), 'mixture')
-                    self.showAttention(srcs, preds, trans.std_attns[0].cpu(), 'std')
-                    self.showAttention(srcs, preds, trans.topic_attns[0].cpu(), 'topic')
+                    # self.showAttention(srcs, preds, trans.attns[0].cpu(), 'mixture')
+                    # self.showAttention(srcs, preds, trans.std_attns[0].cpu(), 'std')
+                    # self.showAttention(srcs, preds, trans.topic_attns[0].cpu(), 'topic')
+                    self.showAttention(srcs, preds,
+                                       (trans.attns[0].cpu(),
+                                        trans.std_attns[0].cpu(),
+                                        trans.topic_attns[0].cpu()), 'topic')
                     mixtureF = open('mixture_attn.txt', 'w')
                     mixtureF.write(output_mixture)
                     mixtureF.close()
@@ -664,8 +690,10 @@ class Translator(object):
             # or [ tgt_len, batch_size, vocab ] when full sentence
         else:
             attn = dec_attn["copy"]
+            topic_attn = dec_attn["topic"]
+            mixture_attn = dec_attn["mixture"]
             scores = self.model.generator(dec_out.view(-1, dec_out.size(2)),
-                                          attn.view(-1, attn.size(2)),
+                                          mixture_attn.view(-1, mixture_attn.size(2)),
                                           src_map)
             # here we have scores [tgt_lenxbatch, vocab] or [beamxbatch, vocab]
             if batch_offset is None:

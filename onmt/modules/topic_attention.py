@@ -1,4 +1,6 @@
 """Global attention modules (Luong / Bahdanau)"""
+import six
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -154,6 +156,7 @@ class TopicAttention(nn.Module):
         tgt_batch, tgt_len, tgt_dim = h_t.size()
         aeq(src_batch, tgt_batch)
         aeq(src_dim, tgt_dim)
+        # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
         if self.attn_type in ["general", "dot"]:
             if self.attn_type == "general":
                 h_t_ = h_t.view(tgt_batch * tgt_len, tgt_dim)
@@ -244,19 +247,22 @@ class TopicAttention(nn.Module):
             mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
             mask = mask.unsqueeze(1)  # Make it broadcastable.
             topic_align.masked_fill_(1 - mask, -float('inf'))
-            if self.attn_func == "softmax":
+            if self.attn_func != "softmax":
                 topic_align_vectors = F.softmax(topic_align.view(batch * target_l, source_l), -1)
             else:
                 topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
             theta = 0.5
             topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
+            topic_replaced_align_vectors = topic_align_vectors.clone()
             mixture_align_vectors = theta * align_vectors + (1-theta) * topic_align_vectors
+            # mixture_align_vectors = torch.max(align_vectors, topic_align_vectors)
+            # mixture_align_vectors = torch.zeros((temp.size(0), te))
             # Replace unk_topic with standard attention
             unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
             for idx, value in enumerate(unk_idx):
-                if value == 1:
-                    mixture_align_vectors[idx] = align_vectors[idx]
-                    topic_align_vectors[idx] = align_vectors[idx]
+                 if value == 1:
+                     mixture_align_vectors[idx] = align_vectors[idx]
+                     topic_replaced_align_vectors[idx] = align_vectors[idx]
         # each context vector c_t is the weighted average
         # over all the source hidden states
         c = torch.bmm(mixture_align_vectors, memory_bank)

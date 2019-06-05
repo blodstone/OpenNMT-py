@@ -437,7 +437,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
                     decoder_output, memory_bank.transpose(0, 1))
                 attns["copy"] += [copy_attn]
             elif self._reuse_copy_attn:
-                attns["copy"] = attns["std"]
+                attns["copy"] = attns["mixture"]
 
         return dec_state, dec_outs, attns
 
