@@ -67,6 +67,7 @@ def main(opt, device_id):
         topic_matrix = torch.load(opt.topic_matrix, map_location=torch.device(device_id))
     else:
         topic_matrix = torch.load(opt.topic_matrix)
+    theta = opt.theta
     if opt.model_dtype == 'fp16':
         topic_matrix = topic_matrix.half()
     # check for code where vocab is saved instead of fields
@@ -116,6 +117,7 @@ def main(opt, device_id):
         logger.warning("Option single_pass is enabled, ignoring train_steps.")
         train_steps = 0
     trainer.train(
+        theta,
         topic_matrix,
         train_iter,
         train_steps,

@@ -178,6 +178,7 @@ class Trainer(object):
                     cpt.detach().float() * average_decay
 
     def train(self,
+              theta,
               topic_matrix,
               train_iter,
               train_steps,
@@ -229,7 +230,7 @@ class Trainer(object):
                                     .all_gather_list
                                     (normalization))
 
-            self._gradient_accumulation(topic_matrix,
+            self._gradient_accumulation(theta, topic_matrix,
                 batches, normalization, total_stats,
                 report_stats)
 
@@ -323,7 +324,7 @@ class Trainer(object):
 
         return stats
 
-    def _gradient_accumulation(self, topic_matrix, true_batches, normalization, total_stats,
+    def _gradient_accumulation(self, theta, topic_matrix, true_batches, normalization, total_stats,
                                report_stats):
         if self.accum_count > 1:
             self.optim.zero_grad()
@@ -354,7 +355,7 @@ class Trainer(object):
                 if self.accum_count == 1:
                     self.optim.zero_grad()
 
-                outputs, attns = self.model(src, tgt, src_lengths, word_topic, word_topic_length, doc_topic, topic_matrix, bptt=bptt)
+                outputs, attns = self.model(src, tgt, src_lengths, theta, topic_matrix, bptt=bptt)
                 bptt = True
 
                 # 3. Compute loss.

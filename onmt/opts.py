@@ -318,8 +318,6 @@ def train_opts(parser):
     group.add('--data', '-data', required=True,
               help='Path prefix to the ".train.pt" and '
                    '".valid.pt" file path from preprocess.py')
-    group.add('--topic_matrix', '-topic_matrix',
-              help="Path to topic matrix")
     group.add('--save_model', '-save_model', default='model',
               help="Model filename (the model will be saved as "
                    "<save_model>_N.pt where N is the number "
@@ -330,6 +328,11 @@ def train_opts(parser):
               help="""Save a checkpoint every X steps""")
     group.add('--keep_checkpoint', '-keep_checkpoint', type=int, default=-1,
               help="Keep X checkpoints (negative: keep all)")
+
+    # Topic attention
+    group.add('--topic_matrix', '-topic_matrix', help="Path to topic matrix")
+    group.add('--theta', '-theta',
+              help="The hyperparameter to adjust standard and topic attention proportion", type=float)
 
     # GPU
     group.add('--gpuid', '-gpuid', default=[], nargs='*', type=int,

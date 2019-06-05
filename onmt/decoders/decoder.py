@@ -196,7 +196,7 @@ class RNNDecoderBase(DecoderBase):
         return topic_emb
 
     def forward(self, tgt, memory_bank,
-                topic_memory_bank,
+                topic_memory_bank, theta,
                 topic_matrix, memory_lengths=None,
                 step=None):
         """
@@ -218,7 +218,7 @@ class RNNDecoderBase(DecoderBase):
         """
 
         dec_state, dec_outs, attns = self._run_forward_pass(
-            tgt, memory_bank, topic_memory_bank,
+            tgt, memory_bank, topic_memory_bank, theta,
             topic_matrix, memory_lengths=memory_lengths)
 
 
@@ -362,7 +362,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
     """
 
     def _run_forward_pass(self, tgt, memory_bank,
-                          topic_memory_bank, topic_matrix,
+                          topic_memory_bank, theta, topic_matrix,
                           memory_lengths=None):
         """
         See StdRNNDecoder._run_forward_pass() for description
@@ -408,7 +408,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
                     memory_bank.transpose(0, 1),
                     rnn_topic,
                     topic_memory_bank.transpose(0, 1),
-                    unk_topic,
+                    unk_topic, theta,
                     memory_lengths=memory_lengths
                 )
                 attns["std"].append(p_attn)

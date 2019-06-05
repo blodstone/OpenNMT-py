@@ -180,7 +180,7 @@ class TopicAttention(nn.Module):
 
             return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
 
-    def forward(self, source, memory_bank, source_topic, topic_bank, unk_topic,
+    def forward(self, source, memory_bank, source_topic, topic_bank, unk_topic, theta,
                 memory_lengths=None, coverage=None, sample=None, fusion=None):
         """
 
@@ -247,22 +247,18 @@ class TopicAttention(nn.Module):
             mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
             mask = mask.unsqueeze(1)  # Make it broadcastable.
             topic_align.masked_fill_(1 - mask, -float('inf'))
-            if self.attn_func != "softmax":
+            if self.attn_func == "softmax":
                 topic_align_vectors = F.softmax(topic_align.view(batch * target_l, source_l), -1)
             else:
                 topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
-            theta = 0.5
             topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
-            topic_replaced_align_vectors = topic_align_vectors.clone()
             mixture_align_vectors = theta * align_vectors + (1-theta) * topic_align_vectors
-            # mixture_align_vectors = torch.max(align_vectors, topic_align_vectors)
-            # mixture_align_vectors = torch.zeros((temp.size(0), te))
             # Replace unk_topic with standard attention
             unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
             for idx, value in enumerate(unk_idx):
                  if value == 1:
-                     mixture_align_vectors[idx] = align_vectors[idx]
-                     topic_replaced_align_vectors[idx] = align_vectors[idx]
+                     mixture_align_vectors.data[idx] = align_vectors.data[idx]
+                     topic_align_vectors.data[idx] = align_vectors.data[idx]
         # each context vector c_t is the weighted average
         # over all the source hidden states
         c = torch.bmm(mixture_align_vectors, memory_bank)
