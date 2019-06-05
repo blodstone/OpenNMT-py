@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 #$ -l gpu=1
-#$ -P rse
-#$ -q rse.q
 #$ -l rmem=16G
 #$ -l h_rt=96:00:00
 #$ -M hhardy2@sheffield.ac.uk
