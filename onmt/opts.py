@@ -577,6 +577,8 @@ def translate_opts(parser):
               help='True target sequence (optional)')
     group.add('--topic_matrix', '-topic_matrix',
               help="Path to topic matrix")
+    group.add('--theta', '-theta',
+              help="The hyperparameter to adjust standard and topic attention proportion", type=float)
     group.add('--shard_size', '-shard_size', type=int, default=10000,
               help="Divide src and tgt (if applicable) into "
                    "smaller multiple src and tgt files, then "
