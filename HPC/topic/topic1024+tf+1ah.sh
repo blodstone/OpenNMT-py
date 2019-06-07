@@ -19,6 +19,6 @@ source activate freya
 
 mkdir -p $MODEL/topic1024+tf+1ah
 
-python train.py -theta 1 -save_model $MODEL/topic1024+tf+1ah/topic1024+tf+1ah -data $DATA/bbc-topic -copy_attn -global_attention mlp -word_vec_size 256 -rnn_size 1024 -layers 2 -encoder_type brnn -train_steps 200000 -max_grad_norm 2 -dropout 0. -batch_size 16 -valid_batch_size 16 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -seed 777 -topic_matrix $RAW_DATA/topic_matrix.tensor -bridge -world_size 0 -gpu_ranks 0 -log_file $OUTPUT/topic1024+tf+1ah-01.log
+python train.py -theta 1 -save_model $MODEL/topic1024+tf+1ah/topic1024+tf+1ah -data $DATA/bbc_topic -copy_attn -global_attention mlp -word_vec_size 256 -rnn_size 1024 -layers 2 -encoder_type brnn -train_steps 300000 -max_grad_norm 2 -dropout 0. -batch_size 8 -valid_batch_size 8 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -seed 777 -topic_matrix $RAW_DATA/topic_matrix.tensor -bridge -world_size 0 -gpu_ranks 0 -log_file $OUTPUT/topic1024+tf+1ah-01.log
 
 #python translate.py -gpu 0 -batch_size 20 -beam_size 10 -model models/bbc-split_step_10000.pt -src data/bbc-split/src.test.token -lemma data/bbc-split/src.test.lemma -lemma-align data/bbc-split/src.train.pair -topic_matrix data/bbc-split/topic_matrix.tensor -output testout/smallbbc.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>" --report_rouge --replace_unk -log_file testout/translate_see_01.log
