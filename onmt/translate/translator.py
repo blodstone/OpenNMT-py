@@ -623,6 +623,7 @@ class Translator(object):
             else:
                 return self._translate_batch(
                     batch,
+                    theta,
                     topic_matrix,
                     src_vocabs,
                     self.max_length,
@@ -721,6 +722,7 @@ class Translator(object):
     def _translate_batch(
             self,
             batch,
+            theta,
             topic_matrix,
             src_vocabs,
             max_length,
@@ -792,6 +794,7 @@ class Translator(object):
                 decoder_input,
                 memory_bank,
                 topic_memory_bank,
+                theta,
                 topic_matrix,
                 batch,
                 src_vocabs,
