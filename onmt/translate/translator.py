@@ -318,6 +318,7 @@ class Translator(object):
             self,
             src,
             lemma,
+            theta,
             topic_matrix,
             tgt=None,
             src_dir=None,
@@ -382,7 +383,7 @@ class Translator(object):
 
         for batch in data_iter:
             batch_data = self.translate_batch(
-                batch, topic_matrix, data.src_vocabs, attn_debug
+                batch, theta, topic_matrix, data.src_vocabs, attn_debug
             )
             translations = xlation_builder.from_batch(batch_data)
 
@@ -508,6 +509,7 @@ class Translator(object):
     def _translate_random_sampling(
             self,
             batch,
+            theta,
             topic_matrix,
             src_vocabs,
             max_length,
@@ -523,7 +525,6 @@ class Translator(object):
         assert self.block_ngram_repeat == 0
 
         batch_size = batch.batch_size
-        word_topic, word_topic_length = batch.word_topic
         # Encoder forward.
         src, enc_states, memory_bank, src_lengths = self._run_encoder(batch)
         topic_memory_bank = torch.squeeze(topic_matrix[src], dim=2)
@@ -562,6 +563,7 @@ class Translator(object):
                 decoder_input,
                 memory_bank,
                 topic_memory_bank,
+                theta,
                 topic_matrix,
                 batch,
                 src_vocabs,
@@ -610,6 +612,7 @@ class Translator(object):
             if self.beam_size == 1:
                 return self._translate_random_sampling(
                     batch,
+                    theta,
                     topic_matrix,
                     src_vocabs,
                     self.max_length,
@@ -648,6 +651,7 @@ class Translator(object):
             decoder_in,
             memory_bank,
             topic_memory_bank,
+            theta,
             topic_matrix,
             batch,
             src_vocabs,
@@ -666,7 +670,7 @@ class Translator(object):
         # in case of inference tgt_len = 1, batch = beam times batch_size
         # in case of Gold Scoring tgt_len = actual length, batch = 1 batch
         dec_out, dec_attn = self.model.decoder(
-            decoder_in, memory_bank,
+            decoder_in, memory_bank, theta,
                 topic_memory_bank,
                 topic_matrix, memory_lengths=memory_lengths, step=step
         )
