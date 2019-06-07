@@ -606,7 +606,7 @@ class Translator(object):
         results["attention"] = random_sampler.attention
         return results
 
-    def translate_batch(self, batch, topic_matrix, src_vocabs, attn_debug):
+    def translate_batch(self, batch, theta, topic_matrix, src_vocabs, attn_debug):
         """Translate a batch of sentences."""
         with torch.no_grad():
             if self.beam_size == 1:
