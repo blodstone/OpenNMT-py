@@ -240,6 +240,7 @@ class TopicAttention(nn.Module):
         align_vectors = align_vectors.view(batch, target_l, source_l)
         if theta == 1.0:
             mixture_align_vectors = align_vectors
+            topic_align_vectors = align_vectors
         else:
             ## Topic alignment
             # Scaling by 10e7 to prevent buffer underflow
