@@ -238,27 +238,28 @@ class TopicAttention(nn.Module):
         else:
             align_vectors = sparsemax(align.view(batch*target_l, source_l), -1)
         align_vectors = align_vectors.view(batch, target_l, source_l)
-
-
-        ## Topic alignment
-        # Scaling by 10e7 to prevent buffer underflow
-        topic_align = self.score_topic(source_topic*10e7, topic_bank*10e7)
-        if memory_lengths is not None:
-            mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
-            mask = mask.unsqueeze(1)  # Make it broadcastable.
-            topic_align.masked_fill_(1 - mask, -float('inf'))
-            if self.attn_func == "softmax":
-                topic_align_vectors = F.softmax(topic_align.view(batch * target_l, source_l), -1)
-            else:
-                topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
-            topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
-            mixture_align_vectors = theta * align_vectors + (1-theta) * topic_align_vectors
-            # Replace unk_topic with standard attention
-            unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
-            for idx, value in enumerate(unk_idx):
-                 if value == 1:
-                     mixture_align_vectors.data[idx] = align_vectors.data[idx]
-                     topic_align_vectors.data[idx] = align_vectors.data[idx]
+        if theta == 1.0:
+            mixture_align_vectors = align_vectors
+        else:
+            ## Topic alignment
+            # Scaling by 10e7 to prevent buffer underflow
+            topic_align = self.score_topic(source_topic*10e7, topic_bank*10e7)
+            if memory_lengths is not None:
+                mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
+                mask = mask.unsqueeze(1)  # Make it broadcastable.
+                topic_align.masked_fill_(1 - mask, -float('inf'))
+                if self.attn_func == "softmax":
+                    topic_align_vectors = F.softmax(topic_align.view(batch * target_l, source_l), -1)
+                else:
+                    topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
+                topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
+                mixture_align_vectors = theta * align_vectors + (1-theta) * topic_align_vectors
+                # Replace unk_topic with standard attention
+                unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
+                for idx, value in enumerate(unk_idx):
+                     if value == 1:
+                         mixture_align_vectors.data[idx] = align_vectors.data[idx]
+                         topic_align_vectors.data[idx] = align_vectors.data[idx]
         # each context vector c_t is the weighted average
         # over all the source hidden states
         c = torch.bmm(mixture_align_vectors, memory_bank)
