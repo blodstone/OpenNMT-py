@@ -121,7 +121,7 @@ class RNNDecoderBase(DecoderBase):
                 raise ValueError("Cannot use coverage term with no attention.")
             self.attn = None
         else:
-            self.attn = TopicAttention(
+            self.attn = GlobalAttention(
                 hidden_size, coverage=coverage_attn,
                 attn_type=attn_type, attn_func=attn_func
             )
@@ -403,7 +403,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
             rnn_topic = topic_matrix[rnn_topic]
             unk_topic = topic_matrix[0]
             if self.attentional:
-                decoder_output, p_attn = self.copy_attn(
+                decoder_output, p_attn = self.attn(
                     rnn_output, memory_bank.transpose(0, 1))
                 attns["std"] += [p_attn]
                 # decoder_output, p_attn, t_attn, m_attn = self.attn(
