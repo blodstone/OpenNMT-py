@@ -403,17 +403,20 @@ class InputFeedRNNDecoder(RNNDecoderBase):
             rnn_topic = topic_matrix[rnn_topic]
             unk_topic = topic_matrix[0]
             if self.attentional:
-                decoder_output, p_attn, t_attn, m_attn = self.attn(
-                    rnn_output,
-                    memory_bank.transpose(0, 1),
-                    rnn_topic,
-                    topic_memory_bank.transpose(0, 1),
-                    unk_topic, theta,
-                    memory_lengths=memory_lengths
-                )
-                attns["std"].append(p_attn)
-                attns["topic"].append(t_attn)
-                attns["mixture"].append(m_attn)
+                decoder_output, p_attn = self.copy_attn(
+                    rnn_output, memory_bank.transpose(0, 1))
+                attns["std"] += [p_attn]
+                # decoder_output, p_attn, t_attn, m_attn = self.attn(
+                #     rnn_output,
+                #     memory_bank.transpose(0, 1),
+                #     rnn_topic,
+                #     topic_memory_bank.transpose(0, 1),
+                #     unk_topic, theta,
+                #     memory_lengths=memory_lengths
+                # )
+                # attns["std"].append(p_attn)
+                # attns["topic"].append(t_attn)
+                # attns["mixture"].append(m_attn)
             else:
                 decoder_output = rnn_output
             if self.context_gate is not None:
