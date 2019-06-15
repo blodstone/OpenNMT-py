@@ -121,7 +121,7 @@ class RNNDecoderBase(DecoderBase):
                 raise ValueError("Cannot use coverage term with no attention.")
             self.attn = None
         else:
-            self.attn = GlobalAttention(
+            self.attn = TopicAttention(
                 hidden_size, coverage=coverage_attn,
                 attn_type=attn_type, attn_func=attn_func
             )
@@ -403,20 +403,17 @@ class InputFeedRNNDecoder(RNNDecoderBase):
             rnn_topic = topic_matrix[rnn_topic]
             unk_topic = topic_matrix[0]
             if self.attentional:
-                decoder_output, p_attn = self.attn(
-                    rnn_output, memory_bank.transpose(0, 1))
-                attns["std"] += [p_attn]
-                # decoder_output, p_attn, t_attn, m_attn = self.attn(
-                #     rnn_output,
-                #     memory_bank.transpose(0, 1),
-                #     rnn_topic,
-                #     topic_memory_bank.transpose(0, 1),
-                #     unk_topic, theta,
-                #     memory_lengths=memory_lengths
-                # )
-                # attns["std"].append(p_attn)
-                # attns["topic"].append(t_attn)
-                # attns["mixture"].append(m_attn)
+                decoder_output, p_attn, t_attn, m_attn = self.attn(
+                    rnn_output,
+                    memory_bank.transpose(0, 1),
+                    rnn_topic,
+                    topic_memory_bank.transpose(0, 1),
+                    unk_topic, theta,
+                    memory_lengths=memory_lengths
+                )
+                attns["std"].append(p_attn)
+                attns["topic"].append(t_attn)
+                attns["mixture"].append(m_attn)
             else:
                 decoder_output = rnn_output
             if self.context_gate is not None:
@@ -432,7 +429,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
 
             # Update the coverage attention.
             if self._coverage:
-                coverage = p_attn if coverage is None else p_attn + coverage
+                coverage = m_attn if coverage is None else m_attn + coverage
                 attns["coverage"] += [coverage]
 
             if self.copy_attn is not None:
