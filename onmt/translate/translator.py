@@ -274,7 +274,23 @@ class Translator(object):
             gs = [0] * batch_size
         return gs
 
-    def showAttention(self, input_sentence, output_words, attentions, name):
+    def showSingleAttention(self, input_sentence, output_words, attentions, name):
+        # Set up figure with colorbar
+        fig = plt.figure(figsize=(23, 16))
+        ax = fig.add_subplot(111)
+        cax = ax.matshow(attentions.numpy(), cmap='bone')
+        fig.colorbar(cax)
+
+        # Set up axes
+        ax.set_xticklabels(input_sentence, rotation=90)
+        ax.set_yticklabels(output_words)
+
+        # Show label at every tick
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+        fig.savefig(name + '.png')
+
+    def showAttentions(self, input_sentence, output_words, attentions, name):
         attn, std_attn, topic_attn = attentions
         # Set up figure with colorbar
         fig, axes = plt.subplots(2, 2, figsize=(46, 23))
@@ -454,13 +470,13 @@ class Translator(object):
                             "{:*>10.7f} ", "{:>10.7f} ", max_index)
                         output_topic += row_format.format(word, *row) + '\n'
                         row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
-                    # self.showAttention(srcs, preds, trans.attns[0].cpu(), 'mixture')
-                    # self.showAttention(srcs, preds, trans.std_attns[0].cpu(), 'std')
-                    # self.showAttention(srcs, preds, trans.topic_attns[0].cpu(), 'topic')
-                    self.showAttention(srcs, preds,
-                                       (trans.attns[0].cpu(),
+                    self.showSingleAttention(srcs, preds, trans.attns[0].cpu(), 'mixture')
+                    self.showSingleAttention(srcs, preds, trans.std_attns[0].cpu(), 'std')
+                    self.showSingleAttention(srcs, preds, trans.topic_attns[0].cpu(), 'topic')
+                    self.showAttentions(srcs, preds,
+                                        (trans.attns[0].cpu(),
                                         trans.std_attns[0].cpu(),
-                                        trans.topic_attns[0].cpu()), 'topic')
+                                        trans.topic_attns[0].cpu()), 'all')
                     mixtureF = open('mixture_attn.txt', 'w')
                     mixtureF.write(output_mixture)
                     mixtureF.close()
