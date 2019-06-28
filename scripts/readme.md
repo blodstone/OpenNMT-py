@@ -13,3 +13,7 @@ parse_rouge.py
 preprocess_topic.py
 
 topic_matrix_to_tensor.py
+
+create_topic_model.py -> Creating a topic model with two arguments, the document and the output directory
+
+analysize_topic_model.py -> Load the topic model from create_topic_model.py and analyse it
