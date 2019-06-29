@@ -1,7 +1,8 @@
 import gensim
+from gensim.models.coherencemodel import CoherenceModel
 import argparse
 import spacy
-
+import pickle
 sp = spacy.load('en_core_web_sm')
 
 if __name__ == '__main__':
@@ -30,4 +31,7 @@ if __name__ == '__main__':
         print_result += '\n\n'
         size_result += 'Topic ' + str(i) + ':  ' + str(len(result)) + '\n\n'
         sizes.append(len(result))
-    print(sorted(sizes))
+
+    coherence = CoherenceModel(model=lda, corpus=mm, dictionary=lda.id2word, coherence='u_mass')
+    print(coherence.get_coherence())
+

@@ -42,10 +42,10 @@ def main():
             found = False
             for w2l_word in w2l[word]:
                 if w2l_word in embs:
-                    tensor[idx] = torch.tensor(embs[w2l_word])
+                    tensor[idx] = torch.tensor([float(i) for i in embs[w2l_word]])
                     found = True
             if not found:
-                tensor[idx] = torch.tensor(embs['UNK'])
+                tensor[idx] = torch.tensor((embs['UNK']))
                 words.append(word)
                 i += 1
     torch.save(tensor, opt.output_file)
