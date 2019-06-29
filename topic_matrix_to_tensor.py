@@ -36,7 +36,7 @@ def main():
     for idx, word in enumerate(tgt_vocab.itos):
         if word not in w2l:
             tensor[idx] = torch.tensor(embs['UNK'])
-            words.append(word)
+            words.append((idx, word))
             i += 1
         else:
             found = False
@@ -44,9 +44,10 @@ def main():
                 if w2l_word in embs:
                     tensor[idx] = torch.tensor(embs[w2l_word])
                     found = True
+                    break
             if not found:
                 tensor[idx] = torch.tensor(embs['UNK'])
-                words.append(word)
+                words.append((idx, word))
                 i += 1
     torch.save(tensor, opt.output_file)
     print(i)

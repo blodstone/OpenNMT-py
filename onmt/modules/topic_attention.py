@@ -263,7 +263,10 @@ class TopicAttention(nn.Module):
                          topic_align_vectors.data[idx] = align_vectors.data[idx]
         # each context vector c_t is the weighted average
         # over all the source hidden states
-        c = torch.bmm(mixture_align_vectors, memory_bank)
+        if theta == 1.0:
+            c = torch.bmm(align_vectors, memory_bank)
+        else:
+            c = torch.bmm(mixture_align_vectors, memory_bank)
 
         # concatenate
         concat_c = torch.cat([c, source], 2).view(batch*target_l, dim*2)
