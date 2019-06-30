@@ -93,7 +93,6 @@ class TopicAttention(nn.Module):
             self.v = nn.Linear(dim, 1, bias=False)
             self.linear_context_topic = nn.Linear(topic_dim, topic_dim, bias=False)
             self.linear_query_topic = nn.Linear(topic_dim, topic_dim, bias=True)
-            self.linear_topic = nn.Linear(topic_dim, topic_dim, bias=True)
             self.v_topic = nn.Linear(topic_dim, 1, bias=False)
         # mlp wants it with bias
         out_bias = self.attn_type == "mlp"
@@ -158,12 +157,11 @@ class TopicAttention(nn.Module):
         tgt_batch, tgt_len, tgt_dim = h_t.size()
         aeq(src_batch, tgt_batch)
         aeq(src_dim, tgt_dim)
-        h_s[h_s == 0] = 10e-8
-        h_t[h_t == 0] = 10e-8
         h_s_ = h_s.transpose(1, 2)
-        result = self.linear_topic(torch.bmm(torch.log(h_t), torch.log(h_s_))
-                                   .view(-1, src_dim))
-        return result.view(tgt_batch, tgt_len, src_len)
+        # Adding parameter (10e4) for squashing small number
+        result = torch.bmm(h_t, h_s_) * 10e4
+        # Minux the max for numerical stability
+        return result - torch.max(result)
         # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
         # if self.attn_type in ["general", "dot"]:
         #     if self.attn_type == "general":
@@ -262,7 +260,8 @@ class TopicAttention(nn.Module):
                 mask = mask.unsqueeze(1)  # Make it broadcastable.
                 topic_align.masked_fill_(1 - mask, -float('inf'))
                 if self.attn_func == "softmax":
-                    topic_align_vectors = F.softmax(topic_align.view(batch * target_l, source_l), -1)
+                    topic_align_vectors = F.softmax(
+                        topic_align.view(batch * target_l, source_l), -1)
                 else:
                     topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
                 topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
