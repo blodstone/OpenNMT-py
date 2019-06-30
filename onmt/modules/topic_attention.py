@@ -93,6 +93,7 @@ class TopicAttention(nn.Module):
             self.v = nn.Linear(dim, 1, bias=False)
             self.linear_context_topic = nn.Linear(topic_dim, topic_dim, bias=False)
             self.linear_query_topic = nn.Linear(topic_dim, topic_dim, bias=True)
+            self.linear_topic = nn.Linear(topic_dim, topic_dim, bias=True)
             self.v_topic = nn.Linear(topic_dim, 1, bias=False)
         # mlp wants it with bias
         out_bias = self.attn_type == "mlp"
@@ -157,29 +158,35 @@ class TopicAttention(nn.Module):
         tgt_batch, tgt_len, tgt_dim = h_t.size()
         aeq(src_batch, tgt_batch)
         aeq(src_dim, tgt_dim)
+        h_s[h_s == 0] = 10e-8
+        h_t[h_t == 0] = 10e-8
+        h_s_ = h_s.transpose(1, 2)
+        result = self.linear_topic(torch.bmm(torch.log(h_t), torch.log(h_s_))
+                                   .view(-1, src_dim))
+        return result.view(tgt_batch, tgt_len, src_len)
         # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
-        if self.attn_type in ["general", "dot"]:
-            if self.attn_type == "general":
-                h_t_ = h_t.view(tgt_batch * tgt_len, tgt_dim)
-                h_t_ = self.linear_in_topic(h_t_)
-                h_t = h_t_.view(tgt_batch, tgt_len, tgt_dim)
-            h_s_ = h_s.transpose(1, 2)
-            # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
-            return torch.bmm(h_t, h_s_)
-        else:
-            dim = self.topic_dim
-            wq = self.linear_query_topic(h_t.view(-1, dim))
-            wq = wq.view(tgt_batch, tgt_len, 1, dim)
-            wq = wq.expand(tgt_batch, tgt_len, src_len, dim)
-
-            uh = self.linear_context_topic(h_s.contiguous().view(-1, dim))
-            uh = uh.view(src_batch, 1, src_len, dim)
-            uh = uh.expand(src_batch, tgt_len, src_len, dim)
-
-            # (batch, t_len, s_len, d)
-            wquh = torch.tanh(wq + uh)
-
-            return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
+        # if self.attn_type in ["general", "dot"]:
+        #     if self.attn_type == "general":
+        #         h_t_ = h_t.view(tgt_batch * tgt_len, tgt_dim)
+        #         h_t_ = self.linear_in_topic(h_t_)
+        #         h_t = h_t_.view(tgt_batch, tgt_len, tgt_dim)
+        #     h_s_ = h_s.transpose(1, 2)
+        #     # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
+        #     return torch.bmm(h_t, h_s_)
+        # else:
+        #     dim = self.topic_dim
+        #     wq = self.linear_query_topic(h_t.view(-1, dim))
+        #     wq = wq.view(tgt_batch, tgt_len, 1, dim)
+        #     wq = wq.expand(tgt_batch, tgt_len, src_len, dim)
+        #
+        #     uh = self.linear_context_topic(h_s.contiguous().view(-1, dim))
+        #     uh = uh.view(src_batch, 1, src_len, dim)
+        #     uh = uh.expand(src_batch, tgt_len, src_len, dim)
+        #
+        #     # (batch, t_len, s_len, d)
+        #     wquh = torch.tanh(wq + uh)
+        #
+        #     return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
 
     def mix_probs(self, std, topic, theta):
         mixture = torch.log(std) + theta * torch.log(topic/std + 1)
@@ -249,10 +256,7 @@ class TopicAttention(nn.Module):
         else:
             ## Topic alignment
             # Scaling by 10e4 to prevent buffer underflow
-            source_topic[source_topic == 0] = 10e-8
-            topic_bank[topic_bank == 0] = 10e-8
-            topic_align = self.score_topic(
-                torch.log(source_topic), torch.log(topic_bank))
+            topic_align = self.score_topic(source_topic, topic_bank)
             if memory_lengths is not None:
                 mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
                 mask = mask.unsqueeze(1)  # Make it broadcastable.
