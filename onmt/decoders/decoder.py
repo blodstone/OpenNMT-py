@@ -121,7 +121,11 @@ class RNNDecoderBase(DecoderBase):
                 raise ValueError("Cannot use coverage term with no attention.")
             self.attn = None
         else:
-            self.attn = TopicAttention(
+            self.topic_attn = TopicAttention(
+                hidden_size, coverage=coverage_attn,
+                attn_type=attn_type, attn_func=attn_func
+            )
+            self.attn = GlobalAttention(
                 hidden_size, coverage=coverage_attn,
                 attn_type=attn_type, attn_func=attn_func
             )
@@ -380,7 +384,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
         if self.attn is not None:
             attns["std"] = []
             attns["topic"] = []
-            attns["mixture"] = []
+            attns["original"] = []
         if self.copy_attn is not None or self._reuse_copy_attn:
             attns["copy"] = []
         if self._coverage:
@@ -403,7 +407,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
             rnn_topic = topic_matrix[rnn_topic]
             unk_topic = topic_matrix[0]
             if self.attentional:
-                decoder_output, p_attn, t_attn, m_attn = self.attn(
+                decoder_output, p_attn, t_attn, m_attn = self.topic_attn(
                     rnn_output,
                     memory_bank.transpose(0, 1),
                     rnn_topic,
@@ -411,9 +415,9 @@ class InputFeedRNNDecoder(RNNDecoderBase):
                     unk_topic, theta,
                     memory_lengths=memory_lengths
                 )
-                attns["std"].append(p_attn)
+                attns["std"].append(m_attn)
                 attns["topic"].append(t_attn)
-                attns["mixture"].append(m_attn)
+                attns["original"].append(p_attn)
             else:
                 decoder_output = rnn_output
             if self.context_gate is not None:
@@ -437,7 +441,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
                     decoder_output, memory_bank.transpose(0, 1))
                 attns["copy"] += [copy_attn]
             elif self._reuse_copy_attn:
-                attns["copy"] = attns["mixture"]
+                attns["copy"] = attns["std"]
 
         return dec_state, dec_outs, attns
 

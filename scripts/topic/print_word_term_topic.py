@@ -22,7 +22,7 @@ if __name__ == '__main__':
             for topic_prob_id, topic_prob in term_topics:
                 word_topic_dict[lda.id2word[id]][topic_prob_id] = repr(float(topic_prob))
     print(len(word_topic_dict))
-    topic_list = [i for i in range(512)]
+    topic_list = [i for i in range(100)]
     empty_word_topic = [0 for i in topic_list]
     wordids = wordid_word_dict.keys()
     topic_vectors = {'UNK': empty_word_topic}

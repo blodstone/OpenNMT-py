@@ -18,7 +18,7 @@ def main(opt):
     ArgumentParser.validate_model_opts(opt)
 
     nb_gpu = len(opt.gpu_ranks)
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)
     if opt.world_size > 1:
         mp = torch.multiprocessing.get_context('spawn')
         # Create a thread to listen for errors in the child processes.
