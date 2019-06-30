@@ -73,7 +73,6 @@ class TopicAttention(nn.Module):
     def __init__(self, dim, topic_dim, coverage=False, attn_type="dot",
                  attn_func="softmax"):
         super(TopicAttention, self).__init__()
-
         self.dim = dim
         self.topic_dim = topic_dim
         assert attn_type in ["dot", "general", "mlp"], (
@@ -101,6 +100,8 @@ class TopicAttention(nn.Module):
 
         if coverage:
             self.linear_cover = nn.Linear(1, dim, bias=False)
+
+
 
     def score(self, h_t, h_s):
         """
@@ -270,8 +271,7 @@ class TopicAttention(nn.Module):
                     topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
                 topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
                 all_align_vectors = self.linear_comb(torch.cat([align_vectors.transpose(1, 2), topic_align_vectors.transpose(1, 2)], 2))
-                mixture_align_vectors = F.softmax(all_align_vectors.transpose(1, 2).view(batch * target_l, -1), -1)
-                mixture_align_vectors = mixture_align_vectors.view(batch, target_l, source_l)
+                mixture_align_vectors = all_align_vectors.clamp(min=0).transpose(1, 2)
                 # mixture_align_vectors = self.linear_comb(mixture_align_vectors).view(batch, target_l, dim)
                 # mixture_align_vectors = self.mix_probs(align_vectors, topic_align_vectors, theta)
                 # Replace unk_topic with standard attention

@@ -193,8 +193,9 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         generator.load_state_dict(checkpoint['generator'], strict=False)
     else:
         if model_opt.param_init != 0.0:
-            for p in model.parameters():
-                p.data.uniform_(-model_opt.param_init, model_opt.param_init)
+            for p in model.named_parameters():
+                if p[0] != 'decoder.topic_attn.linear_comb.weight':
+                    p[1].data.uniform_(-model_opt.param_init, model_opt.param_init)
             for p in generator.parameters():
                 p.data.uniform_(-model_opt.param_init, model_opt.param_init)
         if model_opt.param_init_glorot:

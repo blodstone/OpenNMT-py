@@ -83,7 +83,7 @@ class RNNDecoderBase(DecoderBase):
     """
 
     def __init__(self, rnn_type, bidirectional_encoder, num_layers,
-                 hidden_size, topic_size, attn_type="general", attn_func="softmax",
+                 hidden_size, topic_size, theta, attn_type="general", attn_func="softmax",
                  coverage_attn=False, context_gate=None,
                  copy_attn=False, dropout=0.0, embeddings=None,
                  reuse_copy_attn=False, copy_attn_type="general"):
@@ -125,6 +125,9 @@ class RNNDecoderBase(DecoderBase):
                 hidden_size, topic_size, coverage=coverage_attn,
                 attn_type=attn_type, attn_func=attn_func
             )
+            def weight_init(m):
+                m.weight.data = torch.tensor([[theta, 1-theta]])
+            self.topic_attn.linear_comb.apply(weight_init)
             self.attn = GlobalAttention(
                 hidden_size, coverage=coverage_attn,
                 attn_type=attn_type, attn_func=attn_func
@@ -153,6 +156,7 @@ class RNNDecoderBase(DecoderBase):
             opt.dec_layers,
             opt.dec_rnn_size,
             opt.dec_topic_size,
+            opt.theta,
             opt.global_attention,
             opt.global_attention_function,
             opt.coverage_attn,
