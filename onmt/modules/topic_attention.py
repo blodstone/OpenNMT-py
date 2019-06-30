@@ -70,11 +70,12 @@ class TopicAttention(nn.Module):
 
     """
 
-    def __init__(self, dim, coverage=False, attn_type="dot",
+    def __init__(self, dim, topic_dim, coverage=False, attn_type="dot",
                  attn_func="softmax"):
         super(TopicAttention, self).__init__()
 
         self.dim = dim
+        self.topic_dim = topic_dim
         assert attn_type in ["dot", "general", "mlp"], (
             "Please select a valid attention type (got {:s}).".format(
                 attn_type))
@@ -85,14 +86,14 @@ class TopicAttention(nn.Module):
 
         if self.attn_type == "general":
             self.linear_in = nn.Linear(dim, dim, bias=False)
-            self.linear_in_topic = nn.Linear(100, 100, bias=False)
+            self.linear_in_topic = nn.Linear(topic_dim, topic_dim, bias=False)
         elif self.attn_type == "mlp":
             self.linear_context = nn.Linear(dim, dim, bias=False)
             self.linear_query = nn.Linear(dim, dim, bias=True)
             self.v = nn.Linear(dim, 1, bias=False)
-            self.linear_context_topic = nn.Linear(100, 100, bias=False)
-            self.linear_query_topic = nn.Linear(100, 100, bias=True)
-            self.v_topic = nn.Linear(100, 1, bias=False)
+            self.linear_context_topic = nn.Linear(topic_dim, topic_dim, bias=False)
+            self.linear_query_topic = nn.Linear(topic_dim, topic_dim, bias=True)
+            self.v_topic = nn.Linear(topic_dim, 1, bias=False)
         # mlp wants it with bias
         out_bias = self.attn_type == "mlp"
         self.linear_out = nn.Linear(dim * 2, dim, bias=out_bias)
@@ -166,7 +167,7 @@ class TopicAttention(nn.Module):
             # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
             return torch.bmm(h_t, h_s_)
         else:
-            dim = 100
+            dim = self.topic_dim
             wq = self.linear_query_topic(h_t.view(-1, dim))
             wq = wq.view(tgt_batch, tgt_len, 1, dim)
             wq = wq.expand(tgt_batch, tgt_len, src_len, dim)

@@ -83,7 +83,7 @@ class RNNDecoderBase(DecoderBase):
     """
 
     def __init__(self, rnn_type, bidirectional_encoder, num_layers,
-                 hidden_size, attn_type="general", attn_func="softmax",
+                 hidden_size, topic_size, attn_type="general", attn_func="softmax",
                  coverage_attn=False, context_gate=None,
                  copy_attn=False, dropout=0.0, embeddings=None,
                  reuse_copy_attn=False, copy_attn_type="general"):
@@ -122,7 +122,7 @@ class RNNDecoderBase(DecoderBase):
             self.attn = None
         else:
             self.topic_attn = TopicAttention(
-                hidden_size, coverage=coverage_attn,
+                hidden_size, topic_size, coverage=coverage_attn,
                 attn_type=attn_type, attn_func=attn_func
             )
             self.attn = GlobalAttention(
@@ -152,6 +152,7 @@ class RNNDecoderBase(DecoderBase):
             opt.brnn,
             opt.dec_layers,
             opt.dec_rnn_size,
+            opt.dec_topic_size,
             opt.global_attention,
             opt.global_attention_function,
             opt.coverage_attn,
