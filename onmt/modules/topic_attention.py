@@ -181,6 +181,10 @@ class TopicAttention(nn.Module):
 
             return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
 
+    def mix_probs(self, std, topic, theta):
+        mixture = torch.log(std) + theta * torch.log(topic/std + 1)
+        return mixture.exp()
+
     def forward(self, source, memory_bank, source_topic, topic_bank, unk_topic, theta,
                 memory_lengths=None, coverage=None, sample=None, fusion=None):
         """
@@ -244,8 +248,11 @@ class TopicAttention(nn.Module):
             topic_align_vectors = align_vectors
         else:
             ## Topic alignment
-            # Scaling by 10e7 to prevent buffer underflow
-            topic_align = self.score_topic(source_topic*10e7, topic_bank*10e7)
+            # Scaling by 10e4 to prevent buffer underflow
+            source_topic[source_topic == 0] = 10e-8
+            topic_bank[topic_bank == 0] = 10e-8
+            topic_align = self.score_topic(
+                torch.log(source_topic), torch.log(topic_bank))
             if memory_lengths is not None:
                 mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
                 mask = mask.unsqueeze(1)  # Make it broadcastable.
@@ -255,13 +262,14 @@ class TopicAttention(nn.Module):
                 else:
                     topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
                 topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
-                mixture_align_vectors = theta * align_vectors + (1-theta) * topic_align_vectors
+
+                mixture_align_vectors = self.mix_probs(align_vectors, topic_align_vectors, theta)
                 # Replace unk_topic with standard attention
-                unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
-                for idx, value in enumerate(unk_idx):
-                     if value == 1:
-                         mixture_align_vectors.data[idx] = align_vectors.data[idx]
-                         topic_align_vectors.data[idx] = align_vectors.data[idx]
+                # unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
+                # for idx, value in enumerate(unk_idx):
+                #      if value == 1:
+                #          mixture_align_vectors.data[idx] = align_vectors.data[idx]
+                #          topic_align_vectors.data[idx] = align_vectors.data[idx]
         # each context vector c_t is the weighted average
         # over all the source hidden states
         if theta == 1.0:
