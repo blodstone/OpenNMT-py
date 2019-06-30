@@ -83,7 +83,7 @@ class TopicAttention(nn.Module):
         assert attn_func in ["softmax", "sparsemax"], (
             "Please select a valid attention function.")
         self.attn_func = attn_func
-
+        self.attention_combine = nn.Linear(2, 1, bias=False)
         if self.attn_type == "general":
             self.linear_in = nn.Linear(dim, dim, bias=False)
             self.linear_in_topic = nn.Linear(topic_dim, topic_dim, bias=False)
@@ -97,6 +97,7 @@ class TopicAttention(nn.Module):
         # mlp wants it with bias
         out_bias = self.attn_type == "mlp"
         self.linear_out = nn.Linear(dim * 2, dim, bias=out_bias)
+        self.linear_comb = nn.Linear(2, 1, bias=False)
 
         if coverage:
             self.linear_cover = nn.Linear(1, dim, bias=False)
@@ -187,8 +188,11 @@ class TopicAttention(nn.Module):
         #     return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
 
     def mix_probs(self, std, topic, theta):
+
+        self.attention_combine(torch.conc)
         mixture = torch.log(std) + theta * torch.log(topic/std + 1)
-        return mixture.exp()
+        mixture = mixture - torch.max(mixture)
+        return mixture
 
     def forward(self, source, memory_bank, source_topic, topic_bank, unk_topic, theta,
                 memory_lengths=None, coverage=None, sample=None, fusion=None):
@@ -265,8 +269,11 @@ class TopicAttention(nn.Module):
                 else:
                     topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
                 topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
-
-                mixture_align_vectors = self.mix_probs(align_vectors, topic_align_vectors, theta)
+                all_align_vectors = self.linear_comb(torch.cat([align_vectors.transpose(1, 2), topic_align_vectors.transpose(1, 2)], 2))
+                mixture_align_vectors = F.softmax(all_align_vectors.transpose(1, 2).view(batch * target_l, -1), -1)
+                mixture_align_vectors = mixture_align_vectors.view(batch, target_l, source_l)
+                # mixture_align_vectors = self.linear_comb(mixture_align_vectors).view(batch, target_l, dim)
+                # mixture_align_vectors = self.mix_probs(align_vectors, topic_align_vectors, theta)
                 # Replace unk_topic with standard attention
                 # unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
                 # for idx, value in enumerate(unk_idx):
