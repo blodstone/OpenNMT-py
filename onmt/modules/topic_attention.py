@@ -161,7 +161,9 @@ class TopicAttention(nn.Module):
         aeq(src_dim, tgt_dim)
         h_s_ = h_s.transpose(1, 2)
         # Adding parameter (10e4) for squashing small number
-        result = torch.bmm(h_t, h_s_) * 10e4
+        l2_unit = h_t.norm(p=2, dim=2) * h_s.norm(p=2, dim=2)
+        result = torch.bmm(h_t, h_s_) / l2_unit.unsqueeze(1)
+        result[result != result] = 0
         # Minux the max for numerical stability
         return result - torch.max(result)
         # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
@@ -264,13 +266,15 @@ class TopicAttention(nn.Module):
                 mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
                 mask = mask.unsqueeze(1)  # Make it broadcastable.
                 topic_align.masked_fill_(1 - mask, -float('inf'))
-                if self.attn_func == "softmax":
+                if self.attn_func != "softmax":
                     topic_align_vectors = F.softmax(
                         topic_align.view(batch * target_l, source_l), -1)
                 else:
                     topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
                 topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
                 self.linear_comb.weight.data[self.linear_comb.weight.data <= 0] = 0
+                weight_norm = self.linear_comb.weight.norm(p=2, dim=1)
+                self.linear_comb.weight.data = self.linear_comb.weight/weight_norm
                 all_align_vectors = self.linear_comb(torch.cat([align_vectors.transpose(1, 2), topic_align_vectors.transpose(1, 2)], 2))
                 mixture_align_vectors = all_align_vectors.transpose(1, 2)
                 # mixture_align_vectors = self.linear_comb(mixture_align_vectors).view(batch, target_l, dim)

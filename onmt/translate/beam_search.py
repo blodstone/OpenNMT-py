@@ -124,9 +124,9 @@ class BeamSearch(DecodeStrategy):
         # using integer division to get an integer _B without casting
         _B = log_probs.shape[0] // self.beam_size
         if isinstance(attn, tuple):
-            standard_attn = attn[0]
             topic_attn = attn[1]
-            attn = attn[2]
+            original_attn = attn[2]
+            attn = attn[0]
 
 
         if self._stepwise_cov_pen and self._prev_penalty is not None:
@@ -174,7 +174,7 @@ class BeamSearch(DecodeStrategy):
              self.topk_ids.view(_B * self.beam_size, 1)], -1)
         if self.return_attention or self._cov_pen:
             current_attn = attn.index_select(1, self.select_indices)
-            std_current_attn = standard_attn.index_select(1, self.select_indices)
+            std_current_attn = original_attn.index_select(1, self.select_indices)
             topic_current_attn = topic_attn.index_select(1, self.select_indices)
             if step == 1:
                 self.alive_attn = current_attn

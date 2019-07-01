@@ -282,7 +282,8 @@ class Translator(object):
         fig.colorbar(cax)
 
         # Set up axes
-        ax.set_xticklabels(input_sentence, rotation=90)
+        ax.set_xticks(range(len(input_sentence)))
+        ax.set_xticklabels(['']+input_sentence, rotation=90)
         ax.set_yticklabels(output_words)
 
         # Show label at every tick
@@ -426,7 +427,7 @@ class Translator(object):
                         os.write(1, output.encode('utf-8'))
 
                 if attn_debug:
-                    preds = ['<s>'] + trans.pred_sents[0]
+                    preds = ['', '<s>'] + trans.pred_sents[0]
                     preds.append('</s>')
                     preds = [word + '*' if torch.eq(topic_matrix[batch.dataset.fields['src'].base_field.vocab.stoi[word]], topic_matrix[0]).all() else word for word in preds]
                     attns = trans.attns[0].tolist()
@@ -702,19 +703,19 @@ class Translator(object):
                 topic_attn = dec_attn["topic"]
             else:
                 topic_attn = None
-            if "mixture" in dec_attn:
-                mixture_attn = dec_attn["mixture"]
+            if "original" in dec_attn:
+                original = dec_attn["original"]
             else:
-                mixture_attn = None
+                original_attn = None
             log_probs = self.model.generator(dec_out.squeeze(0))
             # returns [(batch_size x beam_size) , vocab ] when 1 step
             # or [ tgt_len, batch_size, vocab ] when full sentence
         else:
             attn = dec_attn["copy"]
             topic_attn = dec_attn["topic"]
-            mixture_attn = dec_attn["mixture"]
+            original_attn = dec_attn["original"]
             scores = self.model.generator(dec_out.view(-1, dec_out.size(2)),
-                                          mixture_attn.view(-1, mixture_attn.size(2)),
+                                          attn.view(-1, attn.size(2)),
                                           src_map)
             # here we have scores [tgt_lenxbatch, vocab] or [beamxbatch, vocab]
             if batch_offset is None:
@@ -733,7 +734,7 @@ class Translator(object):
             log_probs = scores.squeeze(0).log()
             # returns [(batch_size x beam_size) , vocab ] when 1 step
             # or [ tgt_len, batch_size, vocab ] when full sentence
-        return log_probs, (attn, topic_attn, mixture_attn)
+        return log_probs, (attn, topic_attn, original_attn)
 
     def _translate_batch(
             self,
