@@ -159,34 +159,34 @@ class TopicAttention(nn.Module):
         tgt_batch, tgt_len, tgt_dim = h_t.size()
         aeq(src_batch, tgt_batch)
         aeq(src_dim, tgt_dim)
-        # h_s_ = h_s.transpose(1, 2)
-        # # Adding parameter (10e4) for squashing small number
-        # result = torch.bmm(h_t, h_s_) * 10e4
-        # # Minux the max for numerical stability
-        # return result - torch.max(result)
+        h_s_ = h_s.transpose(1, 2)
+        # Adding parameter (10e4) for squashing small number
+        result = torch.bmm(h_t, h_s_) * 10e4
+        # Minux the max for numerical stability
+        return result - torch.max(result)
         # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
-        if self.attn_type in ["general", "dot"]:
-            if self.attn_type == "general":
-                h_t_ = h_t.view(tgt_batch * tgt_len, tgt_dim)
-                h_t_ = self.linear_in_topic(h_t_)
-                h_t = h_t_.view(tgt_batch, tgt_len, tgt_dim)
-            h_s_ = h_s.transpose(1, 2)
-            # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
-            return torch.bmm(h_t, h_s_)
-        else:
-            dim = self.topic_dim
-            wq = self.linear_query_topic(h_t.view(-1, dim))
-            wq = wq.view(tgt_batch, tgt_len, 1, dim)
-            wq = wq.expand(tgt_batch, tgt_len, src_len, dim)
-
-            uh = self.linear_context_topic(h_s.contiguous().view(-1, dim))
-            uh = uh.view(src_batch, 1, src_len, dim)
-            uh = uh.expand(src_batch, tgt_len, src_len, dim)
-
-            # (batch, t_len, s_len, d)
-            wquh = torch.tanh(wq + uh)
-
-            return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
+        # if self.attn_type in ["general", "dot"]:
+        #     if self.attn_type == "general":
+        #         h_t_ = h_t.view(tgt_batch * tgt_len, tgt_dim)
+        #         h_t_ = self.linear_in_topic(h_t_)
+        #         h_t = h_t_.view(tgt_batch, tgt_len, tgt_dim)
+        #     h_s_ = h_s.transpose(1, 2)
+        #     # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
+        #     return torch.bmm(h_t, h_s_)
+        # else:
+        #     dim = self.topic_dim
+        #     wq = self.linear_query_topic(h_t.view(-1, dim))
+        #     wq = wq.view(tgt_batch, tgt_len, 1, dim)
+        #     wq = wq.expand(tgt_batch, tgt_len, src_len, dim)
+        #
+        #     uh = self.linear_context_topic(h_s.contiguous().view(-1, dim))
+        #     uh = uh.view(src_batch, 1, src_len, dim)
+        #     uh = uh.expand(src_batch, tgt_len, src_len, dim)
+        #
+        #     # (batch, t_len, s_len, d)
+        #     wquh = torch.tanh(wq + uh)
+        #
+        #     return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
 
     def mix_probs(self, std, topic, theta):
 
@@ -270,8 +270,9 @@ class TopicAttention(nn.Module):
                 else:
                     topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
                 topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
+                self.linear_comb.weight.data[self.linear_comb.weight.data <= 0] = 0
                 all_align_vectors = self.linear_comb(torch.cat([align_vectors.transpose(1, 2), topic_align_vectors.transpose(1, 2)], 2))
-                mixture_align_vectors = all_align_vectors.clamp(min=0).transpose(1, 2)
+                mixture_align_vectors = all_align_vectors.transpose(1, 2)
                 # mixture_align_vectors = self.linear_comb(mixture_align_vectors).view(batch, target_l, dim)
                 # mixture_align_vectors = self.mix_probs(align_vectors, topic_align_vectors, theta)
                 # Replace unk_topic with standard attention
