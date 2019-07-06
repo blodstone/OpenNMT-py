@@ -10,10 +10,12 @@ if __name__ == '__main__':
     parser.add_argument('-lda', help='LDA Model')
     parser.add_argument('-topic', help='Number of Topic', type=int)
     parser.add_argument('-corpus', help='Corpus')
+    parser.add_argument('-doc_list', help='Text')
     parser.add_argument('-word', help='Number of Words', type=int)
     args = parser.parse_args()
     mm = gensim.corpora.MmCorpus(args.corpus)
     lda = gensim.models.ldamodel.LdaModel.load(args.lda)
+    doc_list =pickle.load(open(args.doc_list, 'rb'))
     NUM_WORDS = args.word
     # for topic in lda.get_topics():
     #     print(topic)
@@ -31,7 +33,7 @@ if __name__ == '__main__':
         print_result += '\n\n'
         size_result += 'Topic ' + str(i) + ':  ' + str(len(result)) + '\n\n'
         sizes.append(len(result))
-
-    coherence = CoherenceModel(model=lda, corpus=mm, dictionary=lda.id2word, coherence='u_mass')
+    print(print_result)
+    coherence = CoherenceModel(model=lda, corpus=mm, texts=doc_list, dictionary=lda.id2word, coherence='c_npmi')
     print(coherence.get_coherence())
 

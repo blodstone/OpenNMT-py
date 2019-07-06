@@ -82,7 +82,6 @@ class TopicAttention(nn.Module):
         assert attn_func in ["softmax", "sparsemax"], (
             "Please select a valid attention function.")
         self.attn_func = attn_func
-        self.attention_combine = nn.Linear(2, 1, bias=False)
         if self.attn_type == "general":
             self.linear_in = nn.Linear(dim, dim, bias=False)
             self.linear_in_topic = nn.Linear(topic_dim, topic_dim, bias=False)
@@ -191,8 +190,6 @@ class TopicAttention(nn.Module):
         #     return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
 
     def mix_probs(self, std, topic, theta):
-
-        self.attention_combine(torch.conc)
         mixture = torch.log(std) + theta * torch.log(topic/std + 1)
         mixture = mixture - torch.max(mixture)
         return mixture
@@ -277,7 +274,6 @@ class TopicAttention(nn.Module):
                 self.linear_comb.weight.data = self.linear_comb.weight/weight_norm
                 all_align_vectors = self.linear_comb(torch.cat([align_vectors.transpose(1, 2), topic_align_vectors.transpose(1, 2)], 2))
                 mixture_align_vectors = all_align_vectors.transpose(1, 2)
-                # mixture_align_vectors = self.linear_comb(mixture_align_vectors).view(batch, target_l, dim)
                 # mixture_align_vectors = self.mix_probs(align_vectors, topic_align_vectors, theta)
                 # Replace unk_topic with standard attention
                 # unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]

@@ -4,12 +4,12 @@ import string
 import spacy
 import re
 import os
-import joblib
+import random
 import gensim
 import pickle
 
 sp = spacy.load('en_core_web_sm',
-                disable=['ner', 'parser', 'textcat', 'entity_ruler', 'merge_noun_chunks',
+                disable=['ner', 'parser', 'textcat', 'entity_ruler', 'sentencizer', 'merge_noun_chunks',
                          'merge_entities', 'merge_subtokens'])
 p = re.compile(r'.*\d.*')
 
@@ -21,24 +21,29 @@ if __name__ == '__main__':
     logging.root.setLevel(level=logging.INFO)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-docs', help='The input documents')
+    parser.add_argument('-bbcdocs', help='The input BBC documents')
+    parser.add_argument('-cnndmdocs', help='The input CNN/DM documents')
     parser.add_argument('-output', help="The path for preprocessing output")
     args = parser.parse_args()
     doc_list = []
-    lines = open(args.docs).readlines()
+    bbc_lines = open(args.bbcdocs).readlines()
+    cnndm_lines = open(args.cnndmdocs).readlines()
+    lines = bbc_lines + cnndm_lines
+    random.shuffle(lines)
+    logging.log(logging.INFO, 'Total line {}'.format(len(lines)))
     i = 0
-    for doc in sp.pipe(lines, batch_size=1000, n_threads=7):
-        if i % 1000 == 0:
+    for doc in sp.pipe(bbc_lines + cnndm_lines, batch_size=100):
+        if i % 100 == 0:
             logging.log(logging.INFO, 'Parse line {}'.format(i))
         i += 1
         new_line = [token.lemma_.lower() for token in doc
                     if not p.match(token.text)
                     and token.text not in string.punctuation
-                    and token.text.lower() not in ["\'\'", "``", "-rrb-", "-lrb-", "\'s", "--", "sos", "eos"]
-                    and token.lemma_.lower() != '-pron-']
+                    and token.text.lower() not in ["\'\'", "``", "-rrb-", "-lrb-", "-llb-", "-rlb-", "\'s", "--", "sos", "eos"]
+                    and token.lemma_.lower() != '-pron-'
+                    and len(token.text) > 2]
         doc_list.append(new_line)
     id2word = gensim.corpora.Dictionary(doc_list)
-    pickle.dump(doc_list, open(args.output +'/doc_list.pickle', 'wb'))
     corpus = [id2word.doc2bow(doc) for doc in doc_list]
     pickle.dump(id2word, open(args.output + '/id2word.pickle', 'wb'))
     gensim.corpora.MmCorpus.serialize(args.output + '/corpus.mm', corpus)

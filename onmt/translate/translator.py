@@ -276,7 +276,7 @@ class Translator(object):
 
     def showSingleAttention(self, input_sentence, output_words, attentions, name):
         # Set up figure with colorbar
-        fig = plt.figure(figsize=(23, 16))
+        fig = plt.figure(figsize=(30, 16))
         ax = fig.add_subplot(111)
         cax = ax.matshow(attentions.numpy(), cmap='bone')
         fig.colorbar(cax)
@@ -284,7 +284,7 @@ class Translator(object):
         # Set up axes
         ax.set_xticks(range(len(input_sentence)))
         ax.set_xticklabels(['']+input_sentence, rotation=90)
-        ax.set_yticklabels(output_words)
+        ax.set_yticklabels(['']+output_words)
 
         # Show label at every tick
         ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
@@ -294,10 +294,10 @@ class Translator(object):
     def showAttentions(self, input_sentence, output_words, attentions, name):
         attn, std_attn, topic_attn = attentions
         # Set up figure with colorbar
-        fig, axes = plt.subplots(2, 2, figsize=(46, 23))
-        ax = axes[0, 0]
-        ax_2 = axes[0, 1]
-        ax_3 = axes[1, 1]
+        fig, axes = plt.subplots(3, 1, figsize=(30, 12))
+        ax = axes[0]
+        ax_2 = axes[1]
+        ax_3 = axes[2]
         # fig = plt.figure(figsize=(23, 16))
         # ax = fig.add_subplots(111)
         # ax_2 = fig.add_subplots(112)
@@ -308,22 +308,22 @@ class Translator(object):
         fig.colorbar(cax, ax=axes, orientation='horizontal', fraction=0.1)
 
         # Set up axes
-        ax.set_title('Mixture')
+        ax.set_title('Mixture', y=-3)
         ax.set_xticks(range(len(input_sentence)))
         ax.set_xticklabels(input_sentence, rotation=90)
-        ax.set_yticks(range(len(output_words)+1))
+        ax.set_yticks(range(len(output_words)))
         ax.set_yticklabels(output_words)
 
-        ax_2.set_title('Standard')
+        ax_2.set_title('Standard', y=-3)
         ax_2.set_xticks(range(len(input_sentence)))
         ax_2.set_xticklabels(input_sentence, rotation=90)
-        ax_2.set_yticks(range(len(output_words)+1))
+        ax_2.set_yticks(range(len(output_words)))
         ax_2.set_yticklabels(output_words)
 
-        ax_3.set_title('Topic')
+        ax_3.set_title('Topic', y=-3)
         ax_3.set_xticks(range(len(input_sentence)))
         ax_3.set_xticklabels(input_sentence, rotation=90)
-        ax_3.set_yticks(range(len(output_words) + 1))
+        ax_3.set_yticks(range(len(output_words)))
         ax_3.set_yticklabels(output_words)
 
         # Show label at every tick
@@ -397,7 +397,7 @@ class Translator(object):
         all_predictions = []
 
         start_time = time.time()
-
+        trans_i = 0
         for batch in data_iter:
             batch_data = self.translate_batch(
                 batch, theta, topic_matrix, data.src_vocabs, attn_debug
@@ -427,9 +427,11 @@ class Translator(object):
                         os.write(1, output.encode('utf-8'))
 
                 if attn_debug:
-                    preds = ['', '<s>'] + trans.pred_sents[0]
+                    preds = ['<s>'] + trans.pred_sents[0]
                     preds.append('</s>')
-                    preds = [word + '*' if torch.eq(topic_matrix[batch.dataset.fields['src'].base_field.vocab.stoi[word]], topic_matrix[0]).all() else word for word in preds]
+                    preds = [word + '*'
+                             if torch.eq(topic_matrix[batch.dataset.fields['src'].base_field.vocab.stoi[word]], topic_matrix[0]).all()
+                             else word + ' (' +str(int(torch.argmax(topic_matrix[batch.dataset.fields['src'].base_field.vocab.stoi[word]]))) + ')' for word in preds]
                     attns = trans.attns[0].tolist()
                     std_attns = trans.std_attns[0].tolist()
                     topic_attns = trans.topic_attns[0].tolist()
@@ -437,8 +439,9 @@ class Translator(object):
                         srcs = trans.src_raw
                     else:
                         srcs = [str(item) for item in range(len(attns[0]))]
-                    srcs = [word + '*' if torch.eq(topic_matrix[batch.dataset.fields['src'].base_field.vocab.stoi[word]], topic_matrix[0]).all() else word for word in srcs]
-
+                    srcs = [word + '*'
+                            if torch.eq(topic_matrix[batch.dataset.fields['src'].base_field.vocab.stoi[word]], topic_matrix[0]).all()
+                            else word + ' (' + str(int(torch.argmax(topic_matrix[batch.dataset.fields['src'].base_field.vocab.stoi[word]]))) + ')' for word in srcs]
                     header_format = "{:>10.10} " + "{:>10.7} " * len(srcs)
                     row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
                     output_mixture = header_format.format("", *srcs) + '\n'
@@ -471,22 +474,23 @@ class Translator(object):
                             "{:*>10.7f} ", "{:>10.7f} ", max_index)
                         output_topic += row_format.format(word, *row) + '\n'
                         row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
-                    self.showSingleAttention(srcs, preds, trans.attns[0].cpu(), 'mixture')
-                    self.showSingleAttention(srcs, preds, trans.std_attns[0].cpu(), 'std')
-                    self.showSingleAttention(srcs, preds, trans.topic_attns[0].cpu(), 'topic')
-                    self.showAttentions(srcs, preds,
-                                        (trans.attns[0].cpu(),
-                                        trans.std_attns[0].cpu(),
-                                        trans.topic_attns[0].cpu()), 'all')
-                    mixtureF = open('mixture_attn.txt', 'w')
+                    self.showSingleAttention(srcs, preds, trans.attns[0].cpu(), 'mixture_'+str(trans_i))
+                    self.showSingleAttention(srcs, preds, trans.std_attns[0].cpu(), 'std_'+str(trans_i))
+                    self.showSingleAttention(srcs, preds, trans.topic_attns[0].cpu(), 'topic_'+str(trans_i))
+                    self.showAttentions(srcs, ['Max'],
+                                        (torch.max(trans.attns[0], dim=0)[0].unsqueeze(0).cpu(),
+                                        torch.max(trans.std_attns[0], dim=0)[0].unsqueeze(0).cpu(),
+                                        torch.max(trans.topic_attns[0], dim=0)[0].unsqueeze(0).cpu().cpu()), 'all'+str(trans_i))
+                    mixtureF = open('mixture_attn_{}.txt'.format(trans_i), 'w')
                     mixtureF.write(output_mixture)
                     mixtureF.close()
-                    stdF = open('std_attn.txt', 'w')
+                    stdF = open('std_attn_{}.txt'.format(trans_i), 'w')
                     stdF.write(output_std)
                     stdF.close()
-                    topicF = open('topic_attn.txt', 'w')
+                    topicF = open('topic_attn_{}.txt'.format(trans_i), 'w')
                     topicF.write(output_topic)
                     topicF.close()
+                    trans_i += 1
                     # if self.logger:
                     #     self.logger.info(output)
                     # else:
@@ -590,7 +594,7 @@ class Translator(object):
                 batch_offset=random_sampler.select_indices
             )
 
-            random_sampler.advance(log_probs, attn)
+            random_sampler.advance(log_probs, attn[0])
             any_batch_is_finished = random_sampler.is_finished.any()
             if any_batch_is_finished:
                 random_sampler.update_finished()
@@ -621,6 +625,8 @@ class Translator(object):
         results["scores"] = random_sampler.scores
         results["predictions"] = random_sampler.predictions
         results["attention"] = random_sampler.attention
+        results["std_attention"] = attn[1]
+        results["topic_attention"] = attn[2]
         return results
 
     def translate_batch(self, batch, theta, topic_matrix, src_vocabs, attn_debug):

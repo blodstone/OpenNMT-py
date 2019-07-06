@@ -96,8 +96,6 @@ class RandomSampling(DecodeStrategy):
         self.topk_scores = None
         self.memory_length = memory_length
         self.batch_size = batch_size
-        self.select_indices = torch.arange(self.batch_size,
-                                           dtype=torch.long, device=device)
         self.original_batch_idx = torch.arange(self.batch_size,
                                                dtype=torch.long, device=device)
 
@@ -128,6 +126,8 @@ class RandomSampling(DecodeStrategy):
             else:
                 self.alive_attn = torch.cat([self.alive_attn, attn], 0)
         self.ensure_max_length()
+        self.select_indices = torch.arange(self.batch_size,
+                                           dtype=torch.long, device=device)
 
     def update_finished(self):
         """Finalize scores and predictions."""
