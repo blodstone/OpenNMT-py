@@ -577,9 +577,6 @@ def translate_opts(parser):
                    "The number of topic.")
     group.add('--src_dir', '-src_dir', default="",
               help='Source directory for image or audio files')
-    group.add('--lemma', '-lemma', required=True,
-              help="Source lemma sequence to decode (one line per "
-                   "sequence)")
     group.add('--tgt', '-tgt',
               help='True target sequence (optional)')
     group.add('--topic_matrix', '-topic_matrix',

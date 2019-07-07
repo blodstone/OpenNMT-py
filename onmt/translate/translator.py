@@ -289,7 +289,7 @@ class Translator(object):
         # Show label at every tick
         ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
         ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-        fig.savefig(name + '.png')
+        fig.savefig('./out/' + name + '.png')
 
     def showAttentions(self, input_sentence, output_words, attentions, name):
         attn, std_attn, topic_attn = attentions
@@ -329,12 +329,11 @@ class Translator(object):
         # Show label at every tick
         # ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
         # ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-        fig.savefig(name+'.png')
+        fig.savefig('./out/' + name+'.png')
 
     def translate(
             self,
             src,
-            lemma,
             theta,
             topic_matrix,
             tgt=None,
@@ -367,7 +366,7 @@ class Translator(object):
             self.fields,
             readers=([self.src_reader, self.tgt_reader, self.word_topic_reader]
                      if tgt else [self.src_reader, self.word_topic_reader]),
-            data=[("src", src), ("tgt", tgt), ("word_topic", lemma)] if tgt else [("src", src), ("word_topic", lemma)],
+            data=[("src", src), ("tgt", tgt)] if tgt else [("src", src)],
             dirs=[src_dir, None, None] if tgt else [src_dir, None],
             sort_key=inputters.str2sortkey[self.data_type],
             filter_pred=self._filter_pred

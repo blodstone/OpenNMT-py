@@ -31,9 +31,9 @@ CUDA_VISIBLE_DEVICES=0 python train.py -theta 0.75 -save_model models/topic1024+
 
 CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 50 -beam_size 10 -model models/save_models/topic1024+tf+multihead+100_step_170000.pt -src data/bbc-split/src.validation.token.lower -lemma data/bbc-split/src.validation.lemma.lower -topic_matrix data/preprocess-topic-bbc/t-512-shashi/topic_matrix.tensor -dec_topic_size 512 -theta 0.5 -output out/topic1024+tf+multihead+512-shashi.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>"
 
-python parse_rouge.py -c ../out/topic1024+tf+multihead+512-shashi.out -r ../data/bbc-split/tgt.txt.validation.lower -output_dir ../out -output_name topic1024+tf+multihead+512-shashi
+python parse_rouge.py -c ../testout/topic1024+tf+multihead+100_debug.out -r /home/acp16hh/Projects/Research/Experiments/Exp_Freya_Topic_Summ/Topic_Summ/data/pre_exp/docs/validation/tgt.validation.select.token -output_dir ../testout -output_name topic1024+tf+multihead+100_debug
 
-python test_rouge.py -c out/topic1024+tf+multihead+512-shashi.c.txt -r out/topic1024+tf+multihead+512-shashi.r.txt
+python test_rouge.py -c testout/topic1024+tf+multihead+100_debug.c.txt -r testout/topic1024+tf+multihead+100_debug.r.txt
 [2019-05-06 21:31:11,078 INFO] encoder: 7322624
 [2019-05-06 21:31:11,078 INFO] decoder: 35990868
 [2019-05-06 21:31:11,078 INFO] * number of pa
@@ -46,6 +46,15 @@ topic1024-bbc+tf+025ah ROUGE(1/2/3/L/SU4): 20.67/3.83/1.24/15.71/4.81
 OpenNMT1024 ROUGE(1/2/3/L/SU4): 27.74/7.75/2.88/20.85/7.88
 topic1024+tf+multihead+100 ROUGE(1/2/3/L/SU4): 26.76/6.97/2.44/20.02/7.33
 topic1024+tf+multihead+1512 ROUGE(1/2/3/L/SU4): 26.97/7.03/2.47/20.18/7.43
+
+
+Debug
+512 [2019-07-06 22:31:15,337 INFO] >> ROUGE(1/2/3/L/SU4): 27.75/5.66/1.96/22.16/7.68
+3 [2019-07-06 22:29:31,099 INFO] >> ROUGE(1/2/3/L/SU4): 32.73/5.66/1.96/18.18/8.82
+
+Pre Experiment:
+512 [2019-07-06 22:46:30,497 INFO] >> ROUGE(1/2/3/L/SU4): 25.23/5.13/1.08/17.41/5.90
+3 [2019-07-06 22:51:24,932 INFO] >> ROUGE(1/2/3/L/SU4): 25.99/4.13/0.90/16.18/5.69
 
 
 ######

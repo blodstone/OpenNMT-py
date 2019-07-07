@@ -20,22 +20,20 @@ def main(opt):
     src_shards = split_corpus(opt.src, opt.shard_size)
     tgt_shards = split_corpus(opt.tgt, opt.shard_size) \
         if opt.tgt is not None else repeat(None)
-    lemma_shards = split_corpus(opt.lemma, opt.shard_size)
-    shard_pairs = zip(src_shards, tgt_shards, lemma_shards)
+    shard_pairs = zip(src_shards, tgt_shards)
     theta = opt.theta
     if opt.gpu >= 0:
         topic_matrix = torch.load(opt.topic_matrix,
                                   map_location=torch.device(opt.gpu))
     else:
         topic_matrix = torch.load(opt.topic_matrix)
-    for i, (src_shard, tgt_shard, lemma_shard) in enumerate(shard_pairs):
+    for i, (src_shard, tgt_shard) in enumerate(shard_pairs):
         logger.info("Translating shard %d." % i)
         translator.translate(
             theta=theta,
             topic_matrix=topic_matrix,
             src=src_shard,
             tgt=tgt_shard,
-            lemma=lemma_shard,
             src_dir=opt.src_dir,
             batch_size=opt.batch_size,
             attn_debug=opt.attn_debug

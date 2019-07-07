@@ -23,6 +23,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-docs', help='The input documents')
     parser.add_argument('-output', help="The path for preprocessing output")
+    parser.add_argument('--remove_stop_words', help="Remove stop words", action='store_true')
     args = parser.parse_args()
     doc_list = []
     lines = open(args.docs).readlines()
@@ -34,7 +35,8 @@ if __name__ == '__main__':
         new_line = [token.lemma_.lower() for token in doc
                     if not p.match(token.text)
                     and token.text not in string.punctuation
-                    and token.text.lower() not in ["\'\'", "``", "-rrb-", "-lrb-", "\'s", "--", "sos", "eos"]
+                    and not token.is_stop == args.remove_stop_words
+                    and token.text.lower() not in ["\'\'", "``", "-lsb-", "-rsb-", "-rrb-", "-lrb-", "\'s", "--", "sos", "eos"]
                     and token.lemma_.lower() != '-pron-']
         doc_list.append(new_line)
     id2word = gensim.corpora.Dictionary(doc_list)
