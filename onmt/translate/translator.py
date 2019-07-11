@@ -477,9 +477,9 @@ class Translator(object):
                     self.showSingleAttention(srcs, preds, trans.std_attns[0].cpu(), 'std_'+str(trans_i))
                     self.showSingleAttention(srcs, preds, trans.topic_attns[0].cpu(), 'topic_'+str(trans_i))
                     self.showAttentions(srcs, ['Max'],
-                                        (torch.max(trans.attns[0], dim=0)[0].unsqueeze(0).cpu(),
-                                        torch.max(trans.std_attns[0], dim=0)[0].unsqueeze(0).cpu(),
-                                        torch.max(trans.topic_attns[0], dim=0)[0].unsqueeze(0).cpu().cpu()), 'all'+str(trans_i))
+                                        (torch.mean(trans.attns[0], dim=0).unsqueeze(0).cpu(),
+                                        torch.mean(trans.std_attns[0], dim=0).unsqueeze(0).cpu(),
+                                        torch.mean(trans.topic_attns[0], dim=0).unsqueeze(0).cpu().cpu()), 'all'+str(trans_i))
                     mixtureF = open('mixture_attn_{}.txt'.format(trans_i), 'w')
                     mixtureF.write(output_mixture)
                     mixtureF.close()
@@ -709,7 +709,7 @@ class Translator(object):
             else:
                 topic_attn = None
             if "original" in dec_attn:
-                original = dec_attn["original"]
+                original_attn = dec_attn["original"]
             else:
                 original_attn = None
             log_probs = self.model.generator(dec_out.squeeze(0))

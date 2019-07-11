@@ -28,7 +28,7 @@ if __name__ == '__main__':
         topic_ = topic[i]
         topic_ = topic_ / topic_.sum()  # normalize to probability distribution
         bestn = gensim.matutils.argsort(topic_, NUM_WORDS, reverse=True)
-        result = [(lda.id2word[id], topic_[id]) for id in bestn if not lda.id2word[id] in stopwords and topic_[id]>0.001]
+        result = [(lda.id2word[id], topic_[id]) for id in bestn]
         print_result += 'Topic ' + str(i) + ':  ' + ' + '.join('%.3f*"%s"' % (v, k) for k, v in result)
         print_result += '\n\n'
         size_result += 'Topic ' + str(i) + ':  ' + str(len(result)) + '\n\n'

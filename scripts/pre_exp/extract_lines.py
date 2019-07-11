@@ -13,23 +13,23 @@ if __name__ == "__main__":
     parser.add_argument('-output', help="The output results")
     parser.add_argument('-type', help="The output results")
     args = parser.parse_args()
-    substring_weather = ['forecast', 'weather', 'temperature', 'warn']
-    substring_terrorist = ['attack', 'terrorist', 'bomb', 'terror', 'qaeda']
-    substring_health = ['treatment', 'drug', 'health', 'patient', 'medicine', 'disease']
+    substring_weather = ['forecast', 'weather', 'met office']
+    substring_terrorist = ['attack', 'terrorist', 'bomb', 'terror', 'syria']
+    substring_health = ['treatment', 'drug', 'health', 'patient', 'nhs']
     substring_finance = ['stock', 'market', 'share', 'finance']
     weather_topic = 0
     terrorist_topic = 0
     health_topic = 0
     finance_topic = 0
     if args.type == 'train':
-        max_weather_topic = 70
-        max_terrorist_topic = 70
-        max_health_topic = 70
-        max_finance_topic = 70
+        max_weather_topic = 150
+        max_terrorist_topic = 150
+        max_health_topic = 150
+        max_finance_topic = 50
     elif args.type == 'validation':
-        max_weather_topic = 100
-        max_terrorist_topic = 100
-        max_health_topic = 100
+        max_weather_topic = 5
+        max_terrorist_topic = 5
+        max_health_topic = 5
         max_finance_topic = 100
     output_lines = []
     output_idx = []
@@ -44,16 +44,16 @@ if __name__ == "__main__":
                 # print('Found line: {} \n {} \n'.format(idx, line))
                 output_lines.append(line)
                 output_idx.append(idx)
-            elif all(x in line for x in substring_terrorist) \
+            if all(x in line for x in substring_terrorist) \
                     and terrorist_topic < max_terrorist_topic:
                 terrorist_topic += 1
                 # print('Found line: {} \n {} \n'.format(idx, line))
                 output_lines.append(line)
                 output_idx.append(idx)
-            elif all(x in line for x in substring_health) \
+            if all(x in line for x in substring_health) \
                     and health_topic < max_health_topic:
                 health_topic += 1
-                # print('Found line: {} \n {} \n'.format(idx, line))
+                print('Found line: {} \n {} \n'.format(idx, line))
                 output_lines.append(line)
                 output_idx.append(idx)
             # elif all(x in line for x in substring_finance) \
@@ -64,6 +64,7 @@ if __name__ == "__main__":
             #     output_idx.append(idx)
     output_file = open(args.output+'/src.'+args.type+'.select.token', 'w')
     output_file.writelines(output_lines)
+    print(len(output_lines))
     output_file.close()
     output_lines = []
     for i in output_idx:

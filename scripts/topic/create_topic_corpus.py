@@ -4,14 +4,30 @@ import string
 import spacy
 import re
 import os
-import joblib
+import nltk
+from nltk.corpus import stopwords, wordnet
+from nltk.stem import WordNetLemmatizer
 import gensim
 import pickle
 
-sp = spacy.load('en_core_web_sm',
-                disable=['ner', 'parser', 'textcat', 'entity_ruler', 'merge_noun_chunks',
-                         'merge_entities', 'merge_subtokens'])
+# sp = spacy.load('en_core_web_sm',
+#                 disable=['ner', 'parser', 'textcat', 'entity_ruler', 'merge_noun_chunks',
+#                          'merge_entities', 'merge_subtokens'])
 p = re.compile(r'.*\d.*')
+stopWords = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+def get_wordnet_pos(treebank_tag):
+    if treebank_tag.startswith('J'):
+        return wordnet.ADJ
+    elif treebank_tag.startswith('V'):
+        return wordnet.VERB
+    elif treebank_tag.startswith('N'):
+        return wordnet.NOUN
+    elif treebank_tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return wordnet.NOUN
 
 if __name__ == '__main__':
     program = os.path.basename("Create Topic Corpus")
@@ -28,16 +44,19 @@ if __name__ == '__main__':
     doc_list = []
     lines = open(args.docs).readlines()
     i = 0
-    for doc in sp.pipe(lines, batch_size=1000, n_threads=7):
+    for doc in lines:
         if i % 1000 == 0:
             logging.log(logging.INFO, 'Parse line {}'.format(i))
         i += 1
-        new_line = [token.lemma_.lower() for token in doc
-                    if not p.match(token.text)
-                    and token.text not in string.punctuation
-                    and not token.is_stop == args.remove_stop_words
-                    and token.text.lower() not in ["\'\'", "``", "-lsb-", "-rsb-", "-rrb-", "-lrb-", "\'s", "--", "sos", "eos"]
-                    and token.lemma_.lower() != '-pron-']
+        pos_doc = nltk.pos_tag(doc.split( ))
+        new_line = [lemmatizer.lemmatize(token, get_wordnet_pos(pos)).lower() for token, pos in pos_doc
+                    if not p.match(token)
+                    and token not in string.punctuation
+                    and (token not in stopWords) == args.remove_stop_words
+                    and token.lower() not in ["\'\'", "``", "-lsb-", "-rsb-", "-rrb-", "-lrb-", "\'s", "--", "<sos>", "<eos>"]]
+        # print(i)
+        # if 'on' in new_line:
+        #     print(new_line)
         doc_list.append(new_line)
     id2word = gensim.corpora.Dictionary(doc_list)
     pickle.dump(doc_list, open(args.output +'/doc_list.pickle', 'wb'))

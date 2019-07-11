@@ -164,7 +164,7 @@ class TopicAttention(nn.Module):
         result = torch.bmm(h_t, h_s_) / l2_unit.unsqueeze(1)
         result[result != result] = 0
         # Minux the max for numerical stability
-        return result - torch.max(result)
+        return result
         # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
         # if self.attn_type in ["general", "dot"]:
         #     if self.attn_type == "general":
@@ -257,7 +257,6 @@ class TopicAttention(nn.Module):
             topic_align_vectors = align_vectors
         else:
             ## Topic alignment
-            # Scaling by 10e4 to prevent buffer underflow
             topic_align = self.score_topic(source_topic, topic_bank)
             if memory_lengths is not None:
                 mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
@@ -269,11 +268,12 @@ class TopicAttention(nn.Module):
                 else:
                     topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
                 topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
-                self.linear_comb.weight.data[self.linear_comb.weight.data <= 0] = 0
-                weight_norm = self.linear_comb.weight.norm(p=2, dim=1)
-                self.linear_comb.weight.data = self.linear_comb.weight/weight_norm
-                all_align_vectors = self.linear_comb(torch.cat([align_vectors.transpose(1, 2), topic_align_vectors.transpose(1, 2)], 2))
-                mixture_align_vectors = all_align_vectors.transpose(1, 2)
+                # self.linear_comb.weight.data[self.linear_comb.weight.data <= 0] = 0
+                # weight_norm = self.linear_comb.weight.norm(p=2, dim=1)
+                # self.linear_comb.weight.data = self.linear_comb.weight/weight_norm
+                # all_align_vectors = self.linear_comb(torch.cat([align_vectors.transpose(1, 2), topic_align_vectors.transpose(1, 2)], 2))
+                # mixture_align_vectors = all_align_vectors.transpose(1, 2)
+                # mixture_align_vectors = torch.tanh(mixture_align_vectors)
                 # mixture_align_vectors = self.mix_probs(align_vectors, topic_align_vectors, theta)
                 # Replace unk_topic with standard attention
                 # unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
@@ -283,10 +283,19 @@ class TopicAttention(nn.Module):
                 #          topic_align_vectors.data[idx] = align_vectors.data[idx]
         # each context vector c_t is the weighted average
         # over all the source hidden states
-        if theta == 1.0:
-            c = torch.bmm(align_vectors, memory_bank)
-        else:
-            c = torch.bmm(mixture_align_vectors, memory_bank)
+        # if theta == 1.0:
+        #     c = torch.bmm(align_vectors, memory_bank)
+        # else:
+        #     c = torch.bmm(mixture_align_vectors, memory_bank)
+
+        # Co-Attention
+        m_std = align_vectors.transpose(1, 2) * memory_bank
+        m_topic = topic_align_vectors.transpose(1, 2) * memory_bank
+        mixture_align_vectors = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
+        mixture_align_vectors = mixture_align_vectors / mixture_align_vectors.norm(p=1, dim=1).unsqueeze(1)
+        mixture_align_vectors = mixture_align_vectors.unsqueeze(1)
+
+        c = torch.bmm(mixture_align_vectors, memory_bank)
 
         # concatenate
         concat_c = torch.cat([c, source], 2).view(batch*target_l, dim*2)

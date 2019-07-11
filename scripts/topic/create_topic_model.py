@@ -31,7 +31,7 @@ if __name__ == '__main__':
     if not os.path.isdir(os.path.dirname(args.output)):
         raise SystemExit("Error: The output directory does not exist. Create the directory and try again.")
     id2word = pickle.load(open(args.id2word, 'rb'))
-    id2word.filter_extremes(no_below=5, no_above=0.9)
+    id2word.filter_extremes(no_below=0, no_above=0.9)
     doc_list = pickle.load(open(args.doc_list, 'rb'))
     mm = [id2word.doc2bow(doc) for doc in doc_list]
     # mm = gensim.corpora.MmCorpus(args.corpus)

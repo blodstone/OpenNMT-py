@@ -5,6 +5,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-lda', help='LDA Model')
     parser.add_argument('-output', help='Output folder')
+    parser.add_argument('-topic', help='Number of topic', type=int)
     args = parser.parse_args()
     lda = gensim.models.ldamodel.LdaModel.load(args.lda)
     count = 0
@@ -22,7 +23,7 @@ if __name__ == '__main__':
             for topic_prob_id, topic_prob in term_topics:
                 word_topic_dict[lda.id2word[id]][topic_prob_id] = repr(float(topic_prob))
     print(len(word_topic_dict))
-    topic_list = [i for i in range(100)]
+    topic_list = [i for i in range(3)]
     empty_word_topic = [0 for i in topic_list]
     wordids = wordid_word_dict.keys()
     topic_vectors = {'UNK': empty_word_topic}

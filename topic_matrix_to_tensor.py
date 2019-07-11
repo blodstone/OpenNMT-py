@@ -21,11 +21,11 @@ def main():
         embs = pickle.load(f)
     lemma_aligns = open(opt.lemma_align, 'rb').readlines()
     w2l = {}
-    for pair in lemma_aligns:
+    for pair in set(lemma_aligns):
         pair = pair.strip().split()
         word = pair[0].decode('utf-8')
         lemma = pair[1].decode('utf-8')
-        if word not in w2l:
+        if word not in w2l.keys():
             w2l[word] = [lemma]
         else:
             w2l[word].append(lemma)
@@ -34,7 +34,7 @@ def main():
     i = 1
     words = []
     for idx, word in enumerate(tgt_vocab.itos):
-        if word not in w2l:
+        if word not in w2l.keys():
             tensor[idx] = torch.tensor(embs['UNK'])
             words.append(word)
             i += 1
