@@ -83,7 +83,7 @@ class RNNDecoderBase(DecoderBase):
     """
 
     def __init__(self, rnn_type, bidirectional_encoder, num_layers,
-                 hidden_size, topic_size, theta, attn_type="general", attn_func="softmax",
+                 hidden_size, topic, attn_type="general", attn_func="softmax",
                  coverage_attn=False, context_gate=None,
                  copy_attn=False, dropout=0.0, embeddings=None,
                  reuse_copy_attn=False, copy_attn_type="general"):
@@ -122,12 +122,11 @@ class RNNDecoderBase(DecoderBase):
             self.attn = None
         else:
             self.topic_attn = TopicAttention(
-                hidden_size, topic_size, coverage=coverage_attn,
+                hidden_size, topic, coverage=coverage_attn,
                 attn_type=attn_type, attn_func=attn_func
             )
-            def weight_init(m):
-                m.weight.data = torch.tensor([[theta, 1-theta]])
-            self.topic_attn.linear_comb.apply(weight_init)
+            if topic['topic_joint_attn_mode'] == 'mix':
+                self.topic_attn.linear_comb.data = torch.tensor([[topic['theta'], 1-topic['theta']]])
             self.attn = GlobalAttention(
                 hidden_size, coverage=coverage_attn,
                 attn_type=attn_type, attn_func=attn_func
@@ -148,15 +147,14 @@ class RNNDecoderBase(DecoderBase):
             raise ValueError("Cannot reuse copy attention with no attention.")
 
     @classmethod
-    def from_opt(cls, opt, embeddings):
+    def from_opt(cls, opt, embeddings, topic):
         """Alternate constructor."""
         return cls(
             opt.rnn_type,
             opt.brnn,
             opt.dec_layers,
             opt.dec_rnn_size,
-            opt.dec_topic_size,
-            opt.theta,
+            topic,
             opt.global_attention,
             opt.global_attention_function,
             opt.coverage_attn,
@@ -205,8 +203,7 @@ class RNNDecoderBase(DecoderBase):
         return topic_emb
 
     def forward(self, tgt, memory_bank,
-                topic_memory_bank, theta,
-                topic_matrix, memory_lengths=None,
+                topic_memory_bank, topic, memory_lengths=None,
                 step=None):
         """
         Args:
@@ -227,8 +224,7 @@ class RNNDecoderBase(DecoderBase):
         """
 
         dec_state, dec_outs, attns = self._run_forward_pass(
-            tgt, memory_bank, topic_memory_bank, theta,
-            topic_matrix, memory_lengths=memory_lengths)
+            tgt, memory_bank, topic_memory_bank, topic, memory_lengths=memory_lengths)
 
 
         # Update the state with the result.
@@ -371,7 +367,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
     """
 
     def _run_forward_pass(self, tgt, memory_bank,
-                          topic_memory_bank, theta, topic_matrix,
+                          topic_memory_bank, topic,
                           memory_lengths=None):
         """
         See StdRNNDecoder._run_forward_pass() for description
@@ -408,17 +404,16 @@ class InputFeedRNNDecoder(RNNDecoderBase):
             decoder_input = torch.cat([emb_t.squeeze(0), input_feed], 1)
             rnn_output, dec_state = self.rnn(decoder_input, dec_state)
             rnn_topic = tgt[idx_t]
-            rnn_topic[rnn_topic > (topic_matrix.size(0) - 1)] = 0
-            rnn_topic = topic_matrix[rnn_topic]
-            unk_topic = topic_matrix[0]
+            rnn_topic[rnn_topic > (topic['topic_matrix'].size(0) - 1)] = 0
+            rnn_topic = topic['topic_matrix'][rnn_topic]
+            unk_topic = topic['topic_matrix'][0]
             if self.attentional:
                 decoder_output, p_attn, t_attn, m_attn = self.topic_attn(
                     rnn_output,
                     memory_bank.transpose(0, 1),
                     rnn_topic,
                     topic_memory_bank.transpose(0, 1),
-                    unk_topic, theta,
-                    memory_lengths=memory_lengths
+                    unk_topic, memory_lengths=memory_lengths
                 )
                 attns["std"].append(m_attn)
                 attns["topic"].append(t_attn)

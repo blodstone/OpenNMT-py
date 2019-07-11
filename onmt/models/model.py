@@ -18,7 +18,7 @@ class NMTModel(nn.Module):
         self.decoder = decoder
 
     def forward(self, src, tgt, lengths,
-                theta, topic_matrix, bptt=False):
+                topic, bptt=False):
         """Forward propagate a `src` and `tgt` pair for training.
         Possible initialized with a beginning decoder state.
 
@@ -39,10 +39,10 @@ class NMTModel(nn.Module):
             * dictionary attention dists of ``(tgt_len, batch, src_len)``
         """
         tgt = tgt[:-1]  # exclude last target from inputs
-        topic_memory_bank = torch.squeeze(topic_matrix[src], dim=2)
+        topic_memory_bank = torch.squeeze(topic['topic_matrix'][src], dim=2)
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
         if bptt is False:
             self.decoder.init_state(src, memory_bank, enc_state)
         dec_out, attns = self.decoder(tgt, memory_bank, topic_memory_bank,
-                                      theta, topic_matrix, memory_lengths=lengths)
+                                      topic, memory_lengths=lengths)
         return dec_out, attns

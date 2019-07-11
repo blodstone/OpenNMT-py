@@ -4,7 +4,7 @@ import six
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torch.nn import Parameter
 from onmt.modules.sparse_activations import sparsemax
 from onmt.utils.misc import aeq, sequence_mask
 from onmt.utils.logging import logger
@@ -70,37 +70,42 @@ class TopicAttention(nn.Module):
 
     """
 
-    def __init__(self, dim, topic_dim, coverage=False, attn_type="dot",
+    def __init__(self, dim, topic, coverage=False, attn_type="dot",
                  attn_func="softmax"):
         super(TopicAttention, self).__init__()
         self.dim = dim
-        self.topic_dim = topic_dim
+        self.topic_dim = topic['topic_matrix'][1]
         assert attn_type in ["dot", "general", "mlp"], (
             "Please select a valid attention type (got {:s}).".format(
                 attn_type))
         self.attn_type = attn_type
+        self.topic_attn_type = topic['topic_attn_type']
         assert attn_func in ["softmax", "sparsemax"], (
             "Please select a valid attention function.")
         self.attn_func = attn_func
+        self.topic_attn_func = topic['topic_attn_func']
         if self.attn_type == "general":
             self.linear_in = nn.Linear(dim, dim, bias=False)
-            self.linear_in_topic = nn.Linear(topic_dim, topic_dim, bias=False)
         elif self.attn_type == "mlp":
             self.linear_context = nn.Linear(dim, dim, bias=False)
             self.linear_query = nn.Linear(dim, dim, bias=True)
             self.v = nn.Linear(dim, 1, bias=False)
-            self.linear_context_topic = nn.Linear(topic_dim, topic_dim, bias=False)
-            self.linear_query_topic = nn.Linear(topic_dim, topic_dim, bias=True)
-            self.v_topic = nn.Linear(topic_dim, 1, bias=False)
+        if self.topic_attn_type == 'mlp':
+            self.linear_topic = nn.Linear(self.topic_dim, self.topic_dim, bias=False)
+            self.v_topic = nn.Linear(self.topic_dim, 1, bias=False)
         # mlp wants it with bias
         out_bias = self.attn_type == "mlp"
         self.linear_out = nn.Linear(dim * 2, dim, bias=out_bias)
         self.linear_comb = nn.Linear(2, 1, bias=False)
-
+        self.topic_joint_attn_mode = topic['topic_joint_attn_mode']
+        if self.topic_joint_attn_mode == 'co_attention':
+            self.pooling = topic['pooling']
+        self.replace_unk_topic = topic['replace_unk_topic']
         if coverage:
             self.linear_cover = nn.Linear(1, dim, bias=False)
-
-
+        self.weighted_co_attn = topic['weighted_co_attn']
+        if self.weighted_co_attn:
+            self.linear_co_attn = nn.Linear(dim, dim, bias=False)
 
     def score(self, h_t, h_s):
         """
@@ -158,43 +163,32 @@ class TopicAttention(nn.Module):
         tgt_batch, tgt_len, tgt_dim = h_t.size()
         aeq(src_batch, tgt_batch)
         aeq(src_dim, tgt_dim)
-        h_s_ = h_s.transpose(1, 2)
-        # Adding parameter (10e4) for squashing small number
-        l2_unit = h_t.norm(p=2, dim=2) * h_s.norm(p=2, dim=2)
-        result = torch.bmm(h_t, h_s_) / l2_unit.unsqueeze(1)
-        result[result != result] = 0
+
         # Minux the max for numerical stability
-        return result
+        # return result
         # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
-        # if self.attn_type in ["general", "dot"]:
-        #     if self.attn_type == "general":
-        #         h_t_ = h_t.view(tgt_batch * tgt_len, tgt_dim)
-        #         h_t_ = self.linear_in_topic(h_t_)
-        #         h_t = h_t_.view(tgt_batch, tgt_len, tgt_dim)
-        #     h_s_ = h_s.transpose(1, 2)
-        #     # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
-        #     return torch.bmm(h_t, h_s_)
-        # else:
-        #     dim = self.topic_dim
-        #     wq = self.linear_query_topic(h_t.view(-1, dim))
-        #     wq = wq.view(tgt_batch, tgt_len, 1, dim)
-        #     wq = wq.expand(tgt_batch, tgt_len, src_len, dim)
-        #
-        #     uh = self.linear_context_topic(h_s.contiguous().view(-1, dim))
-        #     uh = uh.view(src_batch, 1, src_len, dim)
-        #     uh = uh.expand(src_batch, tgt_len, src_len, dim)
-        #
-        #     # (batch, t_len, s_len, d)
-        #     wquh = torch.tanh(wq + uh)
-        #
-        #     return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
+        if self.topic_attn_type == "dot":
+            h_s_ = h_s.transpose(1, 2)
+            l2_unit = h_t.norm(p=2, dim=2) * h_s.norm(p=2, dim=2)
+            result = torch.bmm(h_t, h_s_) / l2_unit.unsqueeze(1)
+            result[result != result] = 0
+            return result
+        else:
+            dim = self.topic_dim
+            wq = self.linear_topic(h_t.view(-1, dim))
+            wq = wq.view(tgt_batch, tgt_len, 1, dim)
+            wq = wq.expand(tgt_batch, tgt_len, src_len, dim)
 
-    def mix_probs(self, std, topic, theta):
-        mixture = torch.log(std) + theta * torch.log(topic/std + 1)
-        mixture = mixture - torch.max(mixture)
-        return mixture
+            uh = self.linear_topic(h_s.contiguous().view(-1, dim))
+            uh = uh.view(src_batch, 1, src_len, dim)
+            uh = uh.expand(src_batch, tgt_len, src_len, dim)
 
-    def forward(self, source, memory_bank, source_topic, topic_bank, unk_topic, theta,
+            # (batch, t_len, s_len, d)
+            wquh = torch.tanh(wq + uh)
+
+            return self.v_topic(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
+
+    def forward(self, source, memory_bank, source_topic, topic_bank, unk_topic,
                 memory_lengths=None, coverage=None, sample=None, fusion=None):
         """
 
@@ -252,35 +246,30 @@ class TopicAttention(nn.Module):
         else:
             align_vectors = sparsemax(align.view(batch*target_l, source_l), -1)
         align_vectors = align_vectors.view(batch, target_l, source_l)
-        if theta == 1.0:
-            mixture_align_vectors = align_vectors
-            topic_align_vectors = align_vectors
+
+        ## Topic alignment
+        topic_align = self.score_topic(source_topic, topic_bank)
+        if memory_lengths is not None:
+            mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
+            mask = mask.unsqueeze(1)  # Make it broadcastable.
+            topic_align.masked_fill_(1 - mask, -float('inf'))
+        if self.topic_attn_func == "softmax":
+            topic_align_vectors = F.softmax(
+                topic_align.view(batch * target_l, source_l), -1)
         else:
-            ## Topic alignment
-            topic_align = self.score_topic(source_topic, topic_bank)
-            if memory_lengths is not None:
-                mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
-                mask = mask.unsqueeze(1)  # Make it broadcastable.
-                topic_align.masked_fill_(1 - mask, -float('inf'))
-                if self.attn_func != "softmax":
-                    topic_align_vectors = F.softmax(
-                        topic_align.view(batch * target_l, source_l), -1)
-                else:
-                    topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
-                topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
-                # self.linear_comb.weight.data[self.linear_comb.weight.data <= 0] = 0
-                # weight_norm = self.linear_comb.weight.norm(p=2, dim=1)
-                # self.linear_comb.weight.data = self.linear_comb.weight/weight_norm
-                # all_align_vectors = self.linear_comb(torch.cat([align_vectors.transpose(1, 2), topic_align_vectors.transpose(1, 2)], 2))
-                # mixture_align_vectors = all_align_vectors.transpose(1, 2)
-                # mixture_align_vectors = torch.tanh(mixture_align_vectors)
-                # mixture_align_vectors = self.mix_probs(align_vectors, topic_align_vectors, theta)
-                # Replace unk_topic with standard attention
-                # unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
-                # for idx, value in enumerate(unk_idx):
-                #      if value == 1:
-                #          mixture_align_vectors.data[idx] = align_vectors.data[idx]
-                #          topic_align_vectors.data[idx] = align_vectors.data[idx]
+            topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
+        topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
+
+        if self.topic_joint_attn_mode == 'mix':
+            mixture_align_vectors = self.linear_comb(torch.cat([align_vectors.transpose(1, 2), topic_align_vectors.transpose(1, 2)], 2))
+            mixture_align_vectors = mixture_align_vectors.transpose(1, 2)
+            mixture_align_vectors = torch.tanh(mixture_align_vectors)
+
+            # self.linear_comb.weight.data[self.linear_comb.weight.data <= 0] = 0
+            # weight_norm = self.linear_comb.weight.norm(p=2, dim=1)
+            # self.linear_comb.weight.data = self.linear_comb.weight/weight_norm
+            # Replace unk_topic with standard attention
+            #
         # each context vector c_t is the weighted average
         # over all the source hidden states
         # if theta == 1.0:
@@ -289,11 +278,36 @@ class TopicAttention(nn.Module):
         #     c = torch.bmm(mixture_align_vectors, memory_bank)
 
         # Co-Attention
-        m_std = align_vectors.transpose(1, 2) * memory_bank
-        m_topic = topic_align_vectors.transpose(1, 2) * memory_bank
-        mixture_align_vectors = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
-        mixture_align_vectors = mixture_align_vectors / mixture_align_vectors.norm(p=1, dim=1).unsqueeze(1)
-        mixture_align_vectors = mixture_align_vectors.unsqueeze(1)
+        if self.topic_joint_attn_mode == 'co_attention':
+            m_std = align_vectors.transpose(1, 2) * memory_bank
+            if self.weighted_co_attn:
+                m_std = self.linear_co_attn(m_std)
+            m_topic = topic_align_vectors.transpose(1, 2) * memory_bank
+            if self.pooling == 'joint':
+                mixture_align_vectors_col = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
+                mixture_align_vectors_col = mixture_align_vectors_col / mixture_align_vectors_col.norm(p=1, dim=1).unsqueeze(1)
+                mixture_align_vectors_col = mixture_align_vectors_col.unsqueeze(1)
+
+                mixture_align_vectors_row = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
+                mixture_align_vectors_row = mixture_align_vectors_row / mixture_align_vectors_row.norm(p=1, dim=1).unsqueeze(1)
+                mixture_align_vectors_row = mixture_align_vectors_row.unsqueeze(1)
+
+                mixture_align_vectors = (mixture_align_vectors_col + mixture_align_vectors_row)/2
+            else:
+                if self.pooling == 'column':
+                    index = 2
+                else:
+                    index = 1
+                mixture_align_vectors = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), index)[0]
+                mixture_align_vectors = mixture_align_vectors / mixture_align_vectors.norm(p=1, dim=1).unsqueeze(1)
+                mixture_align_vectors = mixture_align_vectors.unsqueeze(1)
+
+        if self.replace_unk_topic:
+            unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
+            for idx, value in enumerate(unk_idx):
+                 if value == 1:
+                     mixture_align_vectors.data[idx] = align_vectors.data[idx]
+                     topic_align_vectors.data[idx] = align_vectors.data[idx]
 
         c = torch.bmm(mixture_align_vectors, memory_bank)
 

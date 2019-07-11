@@ -64,11 +64,22 @@ def main(opt, device_id):
 
     logger.info('Loading topic matrix')
 
+    topic = dict()
+
     if device_id >= 0:
         topic_matrix = torch.load(opt.topic_matrix, map_location=torch.device(device_id))
     else:
         topic_matrix = torch.load(opt.topic_matrix)
-    theta = opt.theta
+    topic['topic_matrix'] = topic_matrix
+    topic['topic_joint_attn_mode'] = opt.joint_attn_mode
+    if opt.joint_attn_mode == 'co_attention':
+        topic['pooling'] = opt.pooling
+        topic['weighted_co_attn'] = opt.weighted_co_attn
+    else:
+        topic['theta'] = opt.theta
+    topic['topic_attn_type'] = opt.topic_attn
+    topic['topic_attn_func'] = opt.topic_attn_function
+    topic['replace_unk_topic'] = opt.replace_unk_topic
     if opt.model_dtype == 'fp16':
         topic_matrix = topic_matrix.half()
     # check for code where vocab is saved instead of fields
@@ -90,7 +101,7 @@ def main(opt, device_id):
                 logger.info(' * %s vocab size = %d' % (sn, len(sf.vocab)))
 
     # Build model.
-    model = build_model(model_opt, opt, fields, checkpoint)
+    model = build_model(model_opt, opt, fields, checkpoint, topic)
     n_params, enc, dec = _tally_parameters(model)
     logger.info('encoder: %d' % enc)
     logger.info('decoder: %d' % dec)
@@ -118,8 +129,7 @@ def main(opt, device_id):
         logger.warning("Option single_pass is enabled, ignoring train_steps.")
         train_steps = 0
     trainer.train(
-        theta,
-        topic_matrix,
+        topic,
         train_iter,
         train_steps,
         save_checkpoint_steps=opt.save_checkpoint_steps,

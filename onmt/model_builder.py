@@ -66,7 +66,7 @@ def build_encoder(opt, embeddings):
     return str2enc[enc_type].from_opt(opt, embeddings)
 
 
-def build_decoder(opt, embeddings):
+def build_decoder(opt, embeddings, topic):
     """
     Various decoder dispatcher function.
     Args:
@@ -75,7 +75,7 @@ def build_decoder(opt, embeddings):
     """
     dec_type = "ifrnn" if opt.decoder_type == "rnn" and opt.input_feed \
                else opt.decoder_type
-    return str2dec[dec_type].from_opt(opt, embeddings)
+    return str2dec[dec_type].from_opt(opt, embeddings, topic)
 
 
 def load_test_model(opt, model_path=None):
@@ -104,7 +104,7 @@ def load_test_model(opt, model_path=None):
     return fields, model, model_opt
 
 
-def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
+def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None, topic=None):
     """Build a model from opts.
 
     Args:
@@ -144,7 +144,7 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
 
         tgt_emb.word_lut.weight = src_emb.word_lut.weight
 
-    decoder = build_decoder(model_opt, tgt_emb)
+    decoder = build_decoder(model_opt, tgt_emb, topic)
 
     # Build NMTModel(= encoder + decoder).
     if gpu and gpu_id is not None:
@@ -221,8 +221,8 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
     return model
 
 
-def build_model(model_opt, opt, fields, checkpoint):
+def build_model(model_opt, opt, fields, checkpoint, topic):
     logger.info('Building model...')
-    model = build_base_model(model_opt, fields, use_gpu(opt), checkpoint)
+    model = build_base_model(model_opt, fields, use_gpu(opt), checkpoint, topic=topic)
     logger.info(model)
     return model

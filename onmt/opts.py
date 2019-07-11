@@ -131,9 +131,6 @@ def model_opts(parser):
 
     # Attention options
     group = parser.add_argument_group('Model- Attention')
-    group.add('--dec_topic_size', '-dec_topic_size', type=int, default=500,
-              help="Number of topic. "
-                   "The number of topic.")
     group.add('--global_attention', '-global_attention',
               type=str, default='general',
               choices=['dot', 'general', 'mlp', 'none'],
@@ -155,6 +152,21 @@ def model_opts(parser):
               help='Number of heads for transformer self-attention')
     group.add('--transformer_ff', '-transformer_ff', type=int, default=2048,
               help='Size of hidden transformer feed-forward')
+
+    # Topic attention options
+    group.add('--topic_matrix', '-topic_matrix', help="Path to topic matrix")
+    group.add('--joint_attn_mode', '-joint_attn_mode', type=str, default='co_attention',
+              choices=['co_attention', 'mix'], help="Type of joining the topic and standard attention")
+    group.add('--theta', '-theta', type=float,
+              help="The hyperparameter to adjust standard and topic attention proportion in mix mode", )
+    group.add('--pooling', '-pooling', default='column', type=str,
+              choices=['joint', 'column', 'row'], help="The choice of pooling for co-attention")
+    group.add('--weighted_co_attn', '-weighted_co_attn', action='store_true', help='Weighting for co-attention')
+    group.add('--topic_attn', '-topic_attn', default='dot', type=str,
+              choices=['dot', 'mlp'], help="The attention type to use: dotprod or general (Luong) or MLP (Bahdanau))")
+    group.add('--topic_attn_function', '-topic_attn_function', type=str, default="softmax", choices=["softmax", "sparsemax"])
+    group.add('--replace_unk_topic', '-replace_topic', action='store_true', help='Replace unknown topic attention with standard attention')
+
 
     # Generator and loss options.
     group.add('--copy_attn', '-copy_attn', action="store_true",
@@ -332,11 +344,6 @@ def train_opts(parser):
               help="""Save a checkpoint every X steps""")
     group.add('--keep_checkpoint', '-keep_checkpoint', type=int, default=-1,
               help="Keep X checkpoints (negative: keep all)")
-
-    # Topic attention
-    group.add('--topic_matrix', '-topic_matrix', help="Path to topic matrix")
-    group.add('--theta', '-theta',
-              help="The hyperparameter to adjust standard and topic attention proportion", type=float)
 
     # GPU
     group.add('--gpuid', '-gpuid', default=[], nargs='*', type=int,
