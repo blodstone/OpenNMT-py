@@ -160,7 +160,7 @@ def model_opts(parser):
     group.add('--theta', '-theta', type=float,
               help="The hyperparameter to adjust standard and topic attention proportion in mix mode", )
     group.add('--pooling', '-pooling', default='column', type=str,
-              choices=['joint', 'column', 'row'], help="The choice of pooling for co-attention")
+              choices=['joint', 'column', 'row', 'exp'], help="The choice of pooling for co-attention")
     group.add('--weighted_co_attn', '-weighted_co_attn', action='store_true', help='Weighting for co-attention')
     group.add('--topic_attn', '-topic_attn', default='dot', type=str,
               choices=['dot', 'mlp'], help="The attention type to use: dotprod or general (Luong) or MLP (Bahdanau))")

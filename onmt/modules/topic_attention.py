@@ -74,7 +74,7 @@ class TopicAttention(nn.Module):
                  attn_func="softmax"):
         super(TopicAttention, self).__init__()
         self.dim = dim
-        self.topic_dim = topic['topic_matrix'][1]
+        self.topic_dim = topic['topic_matrix'].shape[1]
         assert attn_type in ["dot", "general", "mlp"], (
             "Please select a valid attention type (got {:s}).".format(
                 attn_type))
@@ -105,7 +105,8 @@ class TopicAttention(nn.Module):
             self.linear_cover = nn.Linear(1, dim, bias=False)
         self.weighted_co_attn = topic['weighted_co_attn']
         if self.weighted_co_attn:
-            self.linear_co_attn = nn.Linear(dim, dim, bias=False)
+            self.M = nn.Parameter(torch.ones(dim, dim), requires_grad=True)
+        self.F = nn.Linear(dim, dim, bias=True)
 
     def score(self, h_t, h_s):
         """
@@ -280,9 +281,12 @@ class TopicAttention(nn.Module):
         # Co-Attention
         if self.topic_joint_attn_mode == 'co_attention':
             m_std = align_vectors.transpose(1, 2) * memory_bank
-            if self.weighted_co_attn:
-                m_std = self.linear_co_attn(m_std)
             m_topic = topic_align_vectors.transpose(1, 2) * memory_bank
+            if self.pooling == 'exp':
+                m_std = self.F(m_std)
+                m_topic = self.F(m_topic)
+            if self.weighted_co_attn:
+                m_std = m_std.matmul(self.M)
             if self.pooling == 'joint':
                 mixture_align_vectors_col = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
                 mixture_align_vectors_col = mixture_align_vectors_col / mixture_align_vectors_col.norm(p=1, dim=1).unsqueeze(1)
@@ -293,6 +297,10 @@ class TopicAttention(nn.Module):
                 mixture_align_vectors_row = mixture_align_vectors_row.unsqueeze(1)
 
                 mixture_align_vectors = (mixture_align_vectors_col + mixture_align_vectors_row)/2
+            elif self.pooling == 'exp':
+                mixture_align_vectors = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
+                mixture_align_vectors = F.softmax(mixture_align_vectors, 1)
+                mixture_align_vectors = mixture_align_vectors.unsqueeze(1)
             else:
                 if self.pooling == 'column':
                     index = 2
@@ -301,6 +309,7 @@ class TopicAttention(nn.Module):
                 mixture_align_vectors = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), index)[0]
                 mixture_align_vectors = mixture_align_vectors / mixture_align_vectors.norm(p=1, dim=1).unsqueeze(1)
                 mixture_align_vectors = mixture_align_vectors.unsqueeze(1)
+
 
         if self.replace_unk_topic:
             unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
