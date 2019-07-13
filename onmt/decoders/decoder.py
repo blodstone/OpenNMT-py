@@ -121,16 +121,16 @@ class RNNDecoderBase(DecoderBase):
                 raise ValueError("Cannot use coverage term with no attention.")
             self.attn = None
         else:
-            self.topic_attn = TopicAttention(
+            self.attn = TopicAttention(
                 hidden_size, topic, coverage=coverage_attn,
                 attn_type=attn_type, attn_func=attn_func
             )
             if topic['topic_joint_attn_mode'] == 'mix':
                 self.topic_attn.linear_comb.data = torch.tensor([[topic['theta'], 1-topic['theta']]])
-            self.attn = GlobalAttention(
-                hidden_size, coverage=coverage_attn,
-                attn_type=attn_type, attn_func=attn_func
-            )
+            # self.attn = GlobalAttention(
+            #     hidden_size, coverage=coverage_attn,
+            #     attn_type=attn_type, attn_func=attn_func
+            # )
 
         if copy_attn and not reuse_copy_attn:
             if copy_attn_type == "none" or copy_attn_type is None:
@@ -408,7 +408,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
             rnn_topic = topic['topic_matrix'][rnn_topic]
             unk_topic = topic['topic_matrix'][0]
             if self.attentional:
-                decoder_output, p_attn, t_attn, m_attn = self.topic_attn(
+                decoder_output, p_attn, t_attn, m_attn = self.attn(
                     rnn_output,
                     memory_bank.transpose(0, 1),
                     rnn_topic,
