@@ -16,22 +16,33 @@ def main(opt):
     ArgumentParser.validate_translate_opts(opt)
     logger = init_logger(opt.log_file)
 
-    translator = build_translator(opt, report_score=True)
-    src_shards = split_corpus(opt.src, opt.shard_size)
-    tgt_shards = split_corpus(opt.tgt, opt.shard_size) \
-        if opt.tgt is not None else repeat(None)
-    shard_pairs = zip(src_shards, tgt_shards)
-    theta = opt.theta
     if opt.gpu >= 0:
         topic_matrix = torch.load(opt.topic_matrix,
                                   map_location=torch.device(opt.gpu))
     else:
         topic_matrix = torch.load(opt.topic_matrix)
+    topic = dict()
+    topic['topic_matrix'] = topic_matrix
+    topic['topic_joint_attn_mode'] = opt.joint_attn_mode
+    if opt.joint_attn_mode == 'co_attention':
+        topic['pooling'] = opt.pooling
+        topic['weighted_co_attn'] = opt.weighted_co_attn
+    else:
+        topic['theta'] = opt.theta
+    topic['topic_attn_type'] = opt.topic_attn
+    topic['topic_attn_func'] = opt.topic_attn_function
+    topic['replace_unk_topic'] = opt.replace_unk_topic
+
+    translator = build_translator(opt, topic, report_score=True)
+    src_shards = split_corpus(opt.src, opt.shard_size)
+    tgt_shards = split_corpus(opt.tgt, opt.shard_size) \
+        if opt.tgt is not None else repeat(None)
+    shard_pairs = zip(src_shards, tgt_shards)
+
     for i, (src_shard, tgt_shard) in enumerate(shard_pairs):
         logger.info("Translating shard %d." % i)
         translator.translate(
-            theta=theta,
-            topic_matrix=topic_matrix,
+            topic=topic,
             src=src_shard,
             tgt=tgt_shard,
             src_dir=opt.src_dir,

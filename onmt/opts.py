@@ -573,23 +573,32 @@ def translate_opts(parser):
                    "Necessary for models whose output layers can assign "
                    "zero probability.")
 
+    # Topic attention options
+    group.add('--topic_matrix', '-topic_matrix', help="Path to topic matrix")
+    group.add('--joint_attn_mode', '-joint_attn_mode', type=str, default='co_attention',
+              choices=['co_attention', 'mix'], help="Type of joining the topic and standard attention")
+    group.add('--theta', '-theta', type=float,
+              help="The hyperparameter to adjust standard and topic attention proportion in mix mode", )
+    group.add('--pooling', '-pooling', default='column', type=str,
+              choices=['joint', 'column', 'row', 'exp'], help="The choice of pooling for co-attention")
+    group.add('--weighted_co_attn', '-weighted_co_attn', action='store_true', help='Weighting for co-attention')
+    group.add('--topic_attn', '-topic_attn', default='dot', type=str,
+              choices=['dot', 'mlp'], help="The attention type to use: dotprod or general (Luong) or MLP (Bahdanau))")
+    group.add('--topic_attn_function', '-topic_attn_function', type=str, default="softmax",
+              choices=["softmax", "sparsemax"])
+    group.add('--replace_unk_topic', '-replace_topic', action='store_true',
+              help='Replace unknown topic attention with standard attention')
+
     group = parser.add_argument_group('Data')
     group.add('--data_type', '-data_type', default="text",
               help="Type of the source input. Options: [text|img].")
     group.add('--src', '-src', required=True,
               help="Source sequence to decode (one line per "
                    "sequence)")
-    group.add('--dec_topic_size', '-dec_topic_size', type=int, default=500,
-              help="Number of topic. "
-                   "The number of topic.")
     group.add('--src_dir', '-src_dir', default="",
               help='Source directory for image or audio files')
     group.add('--tgt', '-tgt',
               help='True target sequence (optional)')
-    group.add('--topic_matrix', '-topic_matrix',
-              help="Path to topic matrix")
-    group.add('--theta', '-theta',
-              help="The hyperparameter to adjust standard and topic attention proportion", type=float)
     group.add('--shard_size', '-shard_size', type=int, default=10000,
               help="Divide src and tgt (if applicable) into "
                    "smaller multiple src and tgt files, then "

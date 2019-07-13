@@ -78,7 +78,7 @@ def build_decoder(opt, embeddings, topic):
     return str2dec[dec_type].from_opt(opt, embeddings, topic)
 
 
-def load_test_model(opt, model_path=None):
+def load_test_model(opt, topic=None, model_path=None):
     if model_path is None:
         model_path = opt.models[0]
     checkpoint = torch.load(model_path,
@@ -96,7 +96,7 @@ def load_test_model(opt, model_path=None):
         fields = vocab
 
     model = build_base_model(model_opt, fields, use_gpu(opt), checkpoint,
-                             opt.gpu)
+                             opt.gpu, topic)
     if opt.fp32:
         model.float()
     model.eval()

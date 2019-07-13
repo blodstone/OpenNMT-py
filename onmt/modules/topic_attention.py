@@ -4,7 +4,7 @@ import six
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import Parameter
+from torch.nn.parameter import Parameter
 from onmt.modules.sparse_activations import sparsemax
 from onmt.utils.misc import aeq, sequence_mask
 from onmt.utils.logging import logger

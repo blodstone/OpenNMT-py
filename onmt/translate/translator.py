@@ -28,18 +28,19 @@ def showPlot(points):
     ax.yaxis.set_major_locator(loc)
     plt.plot(points)
 
-def build_translator(opt, report_score=True, logger=None, out_file=None):
+def build_translator(opt, topic, report_score=True, logger=None, out_file=None):
     if out_file is None:
         out_file = codecs.open(opt.output, 'w+', 'utf-8')
 
     load_test_model = onmt.decoders.ensemble.load_test_model \
         if len(opt.models) > 1 else onmt.model_builder.load_test_model
-    fields, model, model_opt = load_test_model(opt)
+    fields, model, model_opt = load_test_model(opt, topic)
 
     scorer = onmt.translate.GNMTGlobalScorer.from_opt(opt)
 
     translator = Translator.from_opt(
         model,
+        topic,
         fields,
         opt,
         model_opt,
@@ -95,6 +96,7 @@ class Translator(object):
     def __init__(
             self,
             model,
+            topic,
             fields,
             src_reader,
             tgt_reader,
@@ -125,6 +127,7 @@ class Translator(object):
             logger=None,
             seed=-1):
         self.model = model
+        self.topic = topic
         self.fields = fields
         tgt_field = dict(self.fields)["tgt"].base_field
         self._tgt_vocab = tgt_field.vocab
@@ -198,6 +201,7 @@ class Translator(object):
     def from_opt(
             cls,
             model,
+            topic,
             fields,
             opt,
             model_opt,
@@ -227,6 +231,7 @@ class Translator(object):
         word_topic_reader = inputters.str2reader["text"].from_opt(opt)
         return cls(
             model,
+            topic,
             fields,
             src_reader,
             tgt_reader,
@@ -334,8 +339,7 @@ class Translator(object):
     def translate(
             self,
             src,
-            theta,
-            topic_matrix,
+            topic,
             tgt=None,
             src_dir=None,
             batch_size=None,
@@ -399,7 +403,7 @@ class Translator(object):
         trans_i = 0
         for batch in data_iter:
             batch_data = self.translate_batch(
-                batch, theta, topic_matrix, data.src_vocabs, attn_debug
+                batch, topic, data.src_vocabs, attn_debug
             )
             translations = xlation_builder.from_batch(batch_data)
 
@@ -426,6 +430,7 @@ class Translator(object):
                         os.write(1, output.encode('utf-8'))
 
                 if attn_debug:
+                    topic_matrix = topic['topic_matrix']
                     preds = ['<s>'] + trans.pred_sents[0]
                     preds.append('</s>')
                     preds = [word + '*'
@@ -529,8 +534,7 @@ class Translator(object):
     def _translate_random_sampling(
             self,
             batch,
-            theta,
-            topic_matrix,
+            topic,
             src_vocabs,
             max_length,
             min_length=0,
@@ -628,14 +632,13 @@ class Translator(object):
         results["topic_attention"] = attn[2]
         return results
 
-    def translate_batch(self, batch, theta, topic_matrix, src_vocabs, attn_debug):
+    def translate_batch(self, batch, topic, src_vocabs, attn_debug):
         """Translate a batch of sentences."""
         with torch.no_grad():
             if self.beam_size == 1:
                 return self._translate_random_sampling(
                     batch,
-                    theta,
-                    topic_matrix,
+                    topic,
                     src_vocabs,
                     self.max_length,
                     min_length=self.min_length,
@@ -645,8 +648,7 @@ class Translator(object):
             else:
                 return self._translate_batch(
                     batch,
-                    theta,
-                    topic_matrix,
+                    topic,
                     src_vocabs,
                     self.max_length,
                     min_length=self.min_length,
@@ -674,8 +676,7 @@ class Translator(object):
             decoder_in,
             memory_bank,
             topic_memory_bank,
-            theta,
-            topic_matrix,
+            topic,
             batch,
             src_vocabs,
             memory_lengths,
@@ -694,8 +695,7 @@ class Translator(object):
         # in case of Gold Scoring tgt_len = actual length, batch = 1 batch
         dec_out, dec_attn = self.model.decoder(
             decoder_in, memory_bank,
-                topic_memory_bank, theta,
-                topic_matrix, memory_lengths=memory_lengths, step=step
+                topic_memory_bank, topic, memory_lengths=memory_lengths, step=step
         )
 
         # Generator forward.
@@ -744,8 +744,7 @@ class Translator(object):
     def _translate_batch(
             self,
             batch,
-            theta,
-            topic_matrix,
+            topic,
             src_vocabs,
             max_length,
             min_length=0,
@@ -762,7 +761,7 @@ class Translator(object):
 
         # (1) Run the encoder on the src.
         src, enc_states, memory_bank, src_lengths = self._run_encoder(batch)
-        topic_memory_bank = torch.squeeze(topic_matrix[src], dim=2)
+        topic_memory_bank = torch.squeeze(topic['topic_matrix'][src], dim=2)
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
         results = {
@@ -816,8 +815,7 @@ class Translator(object):
                 decoder_input,
                 memory_bank,
                 topic_memory_bank,
-                theta,
-                topic_matrix,
+                topic,
                 batch,
                 src_vocabs,
                 memory_lengths=memory_lengths,
