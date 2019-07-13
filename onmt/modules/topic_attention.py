@@ -105,7 +105,7 @@ class TopicAttention(nn.Module):
             self.linear_cover = nn.Linear(1, dim, bias=False)
         self.weighted_co_attn = topic['weighted_co_attn']
         if self.weighted_co_attn:
-            self.M = nn.Parameter(torch.ones(dim, dim), requires_grad=True)
+            self.M = Parameter(torch.Tensor(dim, dim), requires_grad=True)
         self.F = nn.Linear(dim, dim, bias=True)
 
     def score(self, h_t, h_s):
