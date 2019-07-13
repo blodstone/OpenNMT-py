@@ -283,8 +283,8 @@ class TopicAttention(nn.Module):
             m_std = align_vectors.transpose(1, 2) * memory_bank
             m_topic = topic_align_vectors.transpose(1, 2) * memory_bank
             if self.pooling == 'exp':
-                m_std = self.F(m_std)
-                m_topic = self.F(m_topic)
+                m_std = F.relu(self.F(m_std))
+                m_topic = F.relu(self.F(m_topic))
             if self.weighted_co_attn:
                 m_std = m_std.matmul(self.M)
             if self.pooling == 'joint':
