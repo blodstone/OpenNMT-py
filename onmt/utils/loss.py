@@ -188,8 +188,8 @@ class LossComputeBase(nn.Module):
         }
         for i in range(2):
             intersection_ngrams_count = 0
-            target_n_grams = self._gen_n_gram(target.masked_select(non_padding), i+1)
-            pred_n_grams = self._gen_n_gram(pred.masked_select(non_padding), i+1)
+            target_n_grams = self._gen_n_grams(target.masked_select(non_padding), i+1)
+            pred_n_grams = self._gen_n_grams(pred.masked_select(non_padding), i+1)
             for n_gram in target_n_grams.keys():
                 intersection_ngrams_count += min(target_n_grams[n_gram], pred_n_grams[n_gram])
             target_n_grams_count = sum(target_n_grams.values())
