@@ -310,7 +310,7 @@ class TopicAttention(nn.Module):
                 else:
                     index = 1
                 mixture_align_vectors = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), index)[0]
-                mixture_align_vectors = mixture_align_vectors / mixture_align_vectors.norm(p=1, dim=1).unsqueeze(1)
+                mixture_align_vectors = F.softmax(mixture_align_vectors, 1)
                 mixture_align_vectors = mixture_align_vectors.unsqueeze(1)
 
 
