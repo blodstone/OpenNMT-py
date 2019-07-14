@@ -118,11 +118,9 @@ class Statistics(object):
         if num_steps > 0:
             step_fmt = "%s/%5d" % (step_fmt, num_steps)
         logger.info(
-            ("Step %s; R1: %6.2f; R2: %6.2f, acc: %6.2f; ppl: %5.2f; xent: %4.2f; " +
+            ("Step %s; acc: %6.2f; ppl: %5.2f; xent: %4.2f; " +
              "lr: %7.5f; %3.0f/%3.0f tok/s; %6.0f sec")
             % (step_fmt,
-               self.rouge_approx_score['f1'][1],
-               self.rouge_approx_score['f1'][2],
                self.accuracy(),
                self.ppl(),
                self.xent(),
