@@ -91,7 +91,8 @@ class TopicAttention(nn.Module):
             self.linear_query = nn.Linear(dim, dim, bias=True)
             self.v = nn.Linear(dim, 1, bias=False)
         if self.topic_attn_type == 'mlp':
-            self.linear_topic = nn.Linear(self.topic_dim, self.topic_dim, bias=False)
+            self.linear_context_topic = nn.Linear(self.topic_dim, self.topic_dim, bias=False)
+            self.linear_query_topic = nn.Linear(self.topic_dim, self.topic_dim, bias=True)
             self.v_topic = nn.Linear(self.topic_dim, 1, bias=False)
         # mlp wants it with bias
         out_bias = self.attn_type == "mlp"
@@ -107,8 +108,8 @@ class TopicAttention(nn.Module):
         if coverage:
             self.linear_cover = nn.Linear(1, dim, bias=False)
 
-
-        self.F = nn.Linear(dim, dim, bias=True)
+        self.F1 = nn.Linear(dim, dim, bias=True)
+        self.F2 = nn.Linear(dim, dim, bias=True)
 
     def score(self, h_t, h_s):
         """
@@ -178,11 +179,11 @@ class TopicAttention(nn.Module):
             return result
         else:
             dim = self.topic_dim
-            wq = self.linear_topic(h_t.view(-1, dim))
+            wq = self.linear_query_topic(h_t.view(-1, dim))
             wq = wq.view(tgt_batch, tgt_len, 1, dim)
             wq = wq.expand(tgt_batch, tgt_len, src_len, dim)
 
-            uh = self.linear_topic(h_s.contiguous().view(-1, dim))
+            uh = self.linear_context_topic(h_s.contiguous().view(-1, dim))
             uh = uh.view(src_batch, 1, src_len, dim)
             uh = uh.expand(src_batch, tgt_len, src_len, dim)
 
@@ -285,8 +286,8 @@ class TopicAttention(nn.Module):
             m_std = align_vectors.transpose(1, 2) * memory_bank
             m_topic = topic_align_vectors.transpose(1, 2) * memory_bank
             if self.pooling == 'exp':
-                m_std = self.F(m_std)
-                m_topic = self.F(m_topic)
+                m_std = self.relu(self.F1(m_std))
+                m_topic = self.relu(self.F2(m_topic))
             if self.weighted_co_attn:
                 m_std = m_std.matmul(self.M)
             if self.pooling == 'joint':
