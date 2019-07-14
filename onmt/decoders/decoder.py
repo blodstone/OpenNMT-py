@@ -126,7 +126,7 @@ class RNNDecoderBase(DecoderBase):
                 attn_type=attn_type, attn_func=attn_func
             )
             if topic['topic_joint_attn_mode'] == 'mix':
-                self.topic_attn.linear_comb.data = torch.tensor([[topic['theta'], 1-topic['theta']]])
+                self.attn.linear_comb.data = torch.tensor([[topic['theta'], 1-topic['theta']]])
             # self.attn = GlobalAttention(
             #     hidden_size, coverage=coverage_attn,
             #     attn_type=attn_type, attn_func=attn_func

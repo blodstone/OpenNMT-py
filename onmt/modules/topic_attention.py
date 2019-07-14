@@ -73,7 +73,6 @@ class TopicAttention(nn.Module):
     def __init__(self, dim, topic, coverage=False, attn_type="dot",
                  attn_func="softmax"):
         super(TopicAttention, self).__init__()
-        self.relu = nn.ReLU(inplace=True)
         self.dim = dim
         self.topic_dim = topic['topic_matrix'].shape[1]
         assert attn_type in ["dot", "general", "mlp"], (
@@ -102,12 +101,13 @@ class TopicAttention(nn.Module):
         self.topic_joint_attn_mode = topic['topic_joint_attn_mode']
         if self.topic_joint_attn_mode == 'co_attention':
             self.pooling = topic['pooling']
+            self.weighted_co_attn = topic['weighted_co_attn']
+            if self.weighted_co_attn:
+                self.M = Parameter(torch.Tensor(dim, dim), requires_grad=True)
         self.replace_unk_topic = topic['replace_unk_topic']
         if coverage:
             self.linear_cover = nn.Linear(1, dim, bias=False)
-        self.weighted_co_attn = topic['weighted_co_attn']
-        if self.weighted_co_attn:
-            self.M = Parameter(torch.Tensor(dim, dim), requires_grad=True)
+
         self.F1 = nn.Linear(dim, dim, bias=True)
         self.F2 = nn.Linear(dim, dim, bias=True)
 
