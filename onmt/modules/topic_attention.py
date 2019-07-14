@@ -100,12 +100,14 @@ class TopicAttention(nn.Module):
         self.topic_joint_attn_mode = topic['topic_joint_attn_mode']
         if self.topic_joint_attn_mode == 'co_attention':
             self.pooling = topic['pooling']
+            self.weighted_co_attn = topic['weighted_co_attn']
+            if self.weighted_co_attn:
+                self.M = Parameter(torch.Tensor(dim, dim), requires_grad=True)
         self.replace_unk_topic = topic['replace_unk_topic']
         if coverage:
             self.linear_cover = nn.Linear(1, dim, bias=False)
-        self.weighted_co_attn = topic['weighted_co_attn']
-        if self.weighted_co_attn:
-            self.M = Parameter(torch.Tensor(dim, dim), requires_grad=True)
+
+
         self.F = nn.Linear(dim, dim, bias=True)
 
     def score(self, h_t, h_s):
@@ -283,8 +285,8 @@ class TopicAttention(nn.Module):
             m_std = align_vectors.transpose(1, 2) * memory_bank
             m_topic = topic_align_vectors.transpose(1, 2) * memory_bank
             if self.pooling == 'exp':
-                m_std = F.relu(self.F(m_std))
-                m_topic = F.relu(self.F(m_topic))
+                m_std = self.F(m_std)
+                m_topic = self.F(m_topic)
             if self.weighted_co_attn:
                 m_std = m_std.matmul(self.M)
             if self.pooling == 'joint':
