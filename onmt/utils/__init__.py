@@ -5,7 +5,6 @@ from onmt.utils.statistics import Statistics
 from onmt.utils.optimizers import MultipleOptimizer, \
     Optimizer, AdaFactor
 from onmt.utils.earlystopping import EarlyStopping, scorers_from_opts
-
 __all__ = ["split_corpus", "aeq", "use_gpu", "set_random_seed", "ReportMgr",
            "build_report_manager", "Statistics",
            "MultipleOptimizer", "Optimizer", "AdaFactor", "EarlyStopping",

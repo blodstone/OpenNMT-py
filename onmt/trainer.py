@@ -300,8 +300,6 @@ class Trainer(object):
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                                    else (batch.src, None)
                 tgt = batch.tgt
-                doc_topic = batch.doc_topic
-                word_topic, word_topic_length = batch.word_topic
                 # F-prop through the model.
 
                 outputs, attns = valid_model(src, tgt, src_lengths, topic)

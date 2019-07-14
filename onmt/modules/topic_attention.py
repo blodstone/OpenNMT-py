@@ -110,6 +110,7 @@ class TopicAttention(nn.Module):
 
         self.F1 = nn.Linear(dim, dim, bias=True)
         self.F2 = nn.Linear(dim, dim, bias=True)
+        self.relu = nn.ReLU(inplace=True)
 
     def score(self, h_t, h_s):
         """

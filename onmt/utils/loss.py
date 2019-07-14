@@ -3,6 +3,7 @@ This includes: LossComputeBase and the standard NMTLossCompute, and
                sharded loss compute stuff.
 """
 from __future__ import division
+from collections import Counter
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -160,6 +161,12 @@ class LossComputeBase(nn.Module):
             batch_stats.update(stats)
         return None, batch_stats
 
+    def _gen_n_grams(self, tokens, n):
+        ngrams = Counter()
+        for ngram in (tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1)):
+            ngrams[ngram] += 1
+        return ngrams
+
     def _stats(self, loss, scores, target):
         """
         Args:
@@ -174,7 +181,30 @@ class LossComputeBase(nn.Module):
         non_padding = target.ne(self.padding_idx)
         num_correct = pred.eq(target).masked_select(non_padding).sum().item()
         num_non_padding = non_padding.sum().item()
-        return onmt.utils.Statistics(loss.item(), num_non_padding, num_correct)
+        rouge_approx = {
+            'precision': {},
+            'recall': {},
+            'f1': {},
+        }
+        for i in range(2):
+            intersection_ngrams_count = 0
+            target_n_grams = self._gen_n_gram(target.masked_select(non_padding), i+1)
+            pred_n_grams = self._gen_n_gram(pred.masked_select(non_padding), i+1)
+            for n_gram in target_n_grams.keys():
+                intersection_ngrams_count += min(target_n_grams[n_gram], pred_n_grams[n_gram])
+            target_n_grams_count = sum(target_n_grams.values())
+            pred_n_grams_count = sum(pred_n_grams.values())
+            precision = intersection_ngrams_count / max(pred_n_grams_count, 1)
+            recall = intersection_ngrams_count / max(target_n_grams_count, 1)
+            if precision + recall > 0:
+                f1 = 2 * precision * recall / (precision + recall)
+            else:
+                f1 = 0.0
+            rouge_approx['precision'][i+1] = precision
+            rouge_approx['recall'][i+1] = recall
+            rouge_approx['f1'][i+1] = f1
+
+        return onmt.utils.Statistics(loss.item(), num_non_padding, num_correct, rouge_approx)
 
     def _bottle(self, _v):
         return _v.view(-1, _v.size(2))
