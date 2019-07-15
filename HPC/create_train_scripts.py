@@ -50,7 +50,7 @@ if __name__ == '__main__':
                                 body = 'python train.py -save_model {} -data {} -copy_attn -global_attention mlp -word_vec_size 256 -rnn_size 1024 -layers 2 -encoder_type brnn -train_steps 220000 -max_grad_norm 2 -dropout 0. -batch_size 8 -valid_batch_size 8 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -seed 777 -topic_matrix {} -bridge -world_size 0 -gpu_ranks 0 -reuse_copy_attn -copy_loss_by_seqlength -joint_attn_mode {} -pooling {} -topic_attn {} -topic_attn_function {} -log_file {} -replace_unk_topic'.format(save_model, data, topic_matrix, joint_attn_mode, pooling, topic_attn, topic_attn_function, log_file)
                             else:
                                 body = 'python train.py -save_model {} -data {} -copy_attn -global_attention mlp -word_vec_size 256 -rnn_size 1024 -layers 2 -encoder_type brnn -train_steps 220000 -max_grad_norm 2 -dropout 0. -batch_size 8 -valid_batch_size 8 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -seed 777 -topic_matrix {} -bridge -world_size 0 -gpu_ranks 0 -reuse_copy_attn -copy_loss_by_seqlength -joint_attn_mode {} -pooling {} -topic_attn {} -topic_attn_function {} -log_file {}'.format(save_model, data, topic_matrix, joint_attn_mode, pooling, topic_attn, topic_attn_function, log_file)
-                            file_path = os.path.join('topic/{}_topic_{}.sh'.format(script_id, name))
+                            file_path = os.path.join('topic/s{}_topic_{}.sh'.format(script_id, name))
                             script_id += 1
                             file = open(file_path, 'w')
                             file.write(gen_header() + body)
@@ -71,7 +71,7 @@ if __name__ == '__main__':
                                 body = 'python train.py -save_model {} -data {} -copy_attn -global_attention mlp -word_vec_size 256 -rnn_size 1024 -layers 2 -encoder_type brnn -train_steps 220000 -max_grad_norm 2 -dropout 0. -batch_size 8 -valid_batch_size 8 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -seed 777 -topic_matrix {} -bridge -world_size 0 -gpu_ranks 0 -reuse_copy_attn -copy_loss_by_seqlength -joint_attn_mode {} -theta {} -topic_attn {} -topic_attn_function {} -log_file {} -replace_unk_topic'.format(save_model, data, topic_matrix, joint_attn_mode, theta, topic_attn, topic_attn_function, log_file)
                             else:
                                 body = 'python train.py -save_model {} -data {} -copy_attn -global_attention mlp -word_vec_size 256 -rnn_size 1024 -layers 2 -encoder_type brnn -train_steps 220000 -max_grad_norm 2 -dropout 0. -batch_size 8 -valid_batch_size 8 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -seed 777 -topic_matrix {} -bridge -world_size 0 -gpu_ranks 0 -reuse_copy_attn -copy_loss_by_seqlength -joint_attn_mode {} -theta {} -topic_attn {} -topic_attn_function {} -log_file {}'.format(save_model, data, topic_matrix, joint_attn_mode, theta, topic_attn,topic_attn_function, log_file)
-                            file_path = os.path.join('topic/{}_topic_{}.sh'.format(script_id, name))
+                            file_path = os.path.join('topic/s{}_topic_{}.sh'.format(script_id, name))
                             script_id += 1
                             file = open(file_path, 'w')
                             file.write(gen_header() + body)
@@ -83,7 +83,7 @@ if __name__ == '__main__':
             if not os.path.exists('/fastdata/acp16hh/models/{}'.format(name)):
                 os.makedirs('/fastdata/acp16hh/models/{}'.format(name))
             body = 'python train.py -save_model {} -data {} -copy_attn -global_attention mlp -word_vec_size 256 -rnn_size 1024 -layers 2 -encoder_type brnn -train_steps 220000 -max_grad_norm 2 -dropout 0. -batch_size 8 -valid_batch_size 8 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -seed 777 -topic_matrix {} -bridge -world_size 0 -gpu_ranks 0 -reuse_copy_attn -copy_loss_by_seqlength -joint_attn_mode {} -log_file {}'.format(save_model, data, topic_matrix, joint_attn_mode, log_file)
-            file_path = os.path.join('topic/{}_topic_{}.sh'.format(script_id, name))
+            file_path = os.path.join('topic/s{}_topic_{}.sh'.format(script_id, name))
             script_id += 1
             file = open(file_path, 'w')
             file.write(gen_header() + body)
