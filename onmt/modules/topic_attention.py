@@ -97,20 +97,25 @@ class TopicAttention(nn.Module):
         # mlp wants it with bias
         out_bias = self.attn_type == "mlp"
         self.linear_out = nn.Linear(dim * 2, dim, bias=out_bias)
-        self.linear_comb = nn.Linear(2, 1, bias=False)
+
         self.topic_joint_attn_mode = topic['topic_joint_attn_mode']
         if self.topic_joint_attn_mode == 'co_attention':
             self.pooling = topic['pooling']
             self.weighted_co_attn = topic['weighted_co_attn']
+            if self.pooling == 'exp':
+                self.F1 = nn.Linear(dim, dim, bias=True)
+                self.F2 = nn.Linear(dim, dim, bias=True)
+                self.relu = nn.ReLU(inplace=True)
             if self.weighted_co_attn:
                 self.M = Parameter(torch.Tensor(dim, dim), requires_grad=True)
+        elif self.topic_joint_attn_mode == 'mix':
+            self.linear_comb = nn.Linear(2, 1, bias=False)
+        elif self.topic_joint_attn_mode == 'embedded':
+            self.linear_query_topic_and_std = nn.Linear(dim + self.topic_dim, dim, bias=True)
+            self.linear_context_topic_and_std = nn.Linear(dim + self.topic_dim, dim, bias=False)
         self.replace_unk_topic = topic['replace_unk_topic']
         if coverage:
             self.linear_cover = nn.Linear(1, dim, bias=False)
-
-        self.F1 = nn.Linear(dim, dim, bias=True)
-        self.F2 = nn.Linear(dim, dim, bias=True)
-        self.relu = nn.ReLU(inplace=True)
 
     def score(self, h_t, h_s):
         """
@@ -220,6 +225,10 @@ class TopicAttention(nn.Module):
         else:
             one_step = False
 
+        if self.topic_joint_attn_mode == 'embedded':
+            source = self.linear_query_topic_and_std(torch.cat([source, source_topic], 2))
+            memory_bank = self.linear_context_topic_and_std(torch.cat([memory_bank, topic_bank], 2))
+
         batch, source_l, dim = memory_bank.size()
         batch_, target_l, dim_ = source.size()
         aeq(batch, batch_)
@@ -252,75 +261,79 @@ class TopicAttention(nn.Module):
             align_vectors = sparsemax(align.view(batch*target_l, source_l), -1)
         align_vectors = align_vectors.view(batch, target_l, source_l)
 
-        ## Topic alignment
-        topic_align = self.score_topic(source_topic, topic_bank)
-        if memory_lengths is not None:
-            mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
-            mask = mask.unsqueeze(1)  # Make it broadcastable.
-            topic_align.masked_fill_(1 - mask, -float('inf'))
-        if self.topic_attn_func == "softmax":
-            topic_align_vectors = F.softmax(
-                topic_align.view(batch * target_l, source_l), -1)
+        if self.topic_joint_attn_mode == 'embedded':
+            mixture_align_vectors = align_vectors
+            topic_align_vectors = align_vectors
         else:
-            topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
-        topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
-
-        if self.topic_joint_attn_mode == 'mix':
-            mixture_align_vectors = self.linear_comb(torch.cat([align_vectors.transpose(1, 2), topic_align_vectors.transpose(1, 2)], 2))
-            mixture_align_vectors = mixture_align_vectors.transpose(1, 2)
-            mixture_align_vectors = torch.tanh(mixture_align_vectors)
-
-            # self.linear_comb.weight.data[self.linear_comb.weight.data <= 0] = 0
-            # weight_norm = self.linear_comb.weight.norm(p=2, dim=1)
-            # self.linear_comb.weight.data = self.linear_comb.weight/weight_norm
-            # Replace unk_topic with standard attention
-            #
-        # each context vector c_t is the weighted average
-        # over all the source hidden states
-        # if theta == 1.0:
-        #     c = torch.bmm(align_vectors, memory_bank)
-        # else:
-        #     c = torch.bmm(mixture_align_vectors, memory_bank)
-
-        # Co-Attention
-        if self.topic_joint_attn_mode == 'co_attention':
-            m_std = align_vectors.transpose(1, 2) * memory_bank
-            m_topic = topic_align_vectors.transpose(1, 2) * memory_bank
-            if self.pooling == 'exp':
-                m_std = self.relu(self.F1(m_std))
-                m_topic = self.relu(self.F2(m_topic))
-            if self.weighted_co_attn:
-                m_std = m_std.matmul(self.M)
-            if self.pooling == 'joint':
-                mixture_align_vectors_col = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
-                mixture_align_vectors_col = mixture_align_vectors_col / mixture_align_vectors_col.norm(p=1, dim=1).unsqueeze(1)
-                mixture_align_vectors_col = mixture_align_vectors_col.unsqueeze(1)
-
-                mixture_align_vectors_row = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
-                mixture_align_vectors_row = mixture_align_vectors_row / mixture_align_vectors_row.norm(p=1, dim=1).unsqueeze(1)
-                mixture_align_vectors_row = mixture_align_vectors_row.unsqueeze(1)
-
-                mixture_align_vectors = (mixture_align_vectors_col + mixture_align_vectors_row)/2
-            elif self.pooling == 'exp':
-                mixture_align_vectors = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
-                mixture_align_vectors = F.softmax(mixture_align_vectors, 1)
-                mixture_align_vectors = mixture_align_vectors.unsqueeze(1)
+            ## Topic alignment
+            topic_align = self.score_topic(source_topic, topic_bank)
+            if memory_lengths is not None:
+                mask = sequence_mask(memory_lengths, max_len=topic_align.size(-1))
+                mask = mask.unsqueeze(1)  # Make it broadcastable.
+                topic_align.masked_fill_(1 - mask, -float('inf'))
+            if self.topic_attn_func == "softmax":
+                topic_align_vectors = F.softmax(
+                    topic_align.view(batch * target_l, source_l), -1)
             else:
-                if self.pooling == 'column':
-                    index = 2
+                topic_align_vectors = sparsemax(topic_align.view(batch * target_l, source_l), -1)
+            topic_align_vectors = topic_align_vectors.view(batch, target_l, source_l)
+
+            if self.topic_joint_attn_mode == 'mix':
+                mixture_align_vectors = self.linear_comb(torch.cat([align_vectors.transpose(1, 2), topic_align_vectors.transpose(1, 2)], 2))
+                mixture_align_vectors = mixture_align_vectors.transpose(1, 2)
+                mixture_align_vectors = torch.tanh(mixture_align_vectors)
+
+                # self.linear_comb.weight.data[self.linear_comb.weight.data <= 0] = 0
+                # weight_norm = self.linear_comb.weight.norm(p=2, dim=1)
+                # self.linear_comb.weight.data = self.linear_comb.weight/weight_norm
+                # Replace unk_topic with standard attention
+                #
+            # each context vector c_t is the weighted average
+            # over all the source hidden states
+            # if theta == 1.0:
+            #     c = torch.bmm(align_vectors, memory_bank)
+            # else:
+            #     c = torch.bmm(mixture_align_vectors, memory_bank)
+
+            # Co-Attention
+            if self.topic_joint_attn_mode == 'co_attention':
+                m_std = align_vectors.transpose(1, 2) * memory_bank
+                m_topic = topic_align_vectors.transpose(1, 2) * memory_bank
+                if self.pooling == 'exp':
+                    m_std = self.relu(self.F1(m_std))
+                    m_topic = self.relu(self.F2(m_topic))
+                if self.weighted_co_attn:
+                    m_std = m_std.matmul(self.M)
+                if self.pooling == 'joint':
+                    mixture_align_vectors_col = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
+                    mixture_align_vectors_col = mixture_align_vectors_col / mixture_align_vectors_col.norm(p=1, dim=1).unsqueeze(1)
+                    mixture_align_vectors_col = mixture_align_vectors_col.unsqueeze(1)
+
+                    mixture_align_vectors_row = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
+                    mixture_align_vectors_row = mixture_align_vectors_row / mixture_align_vectors_row.norm(p=1, dim=1).unsqueeze(1)
+                    mixture_align_vectors_row = mixture_align_vectors_row.unsqueeze(1)
+
+                    mixture_align_vectors = (mixture_align_vectors_col + mixture_align_vectors_row)/2
+                elif self.pooling == 'exp':
+                    mixture_align_vectors = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), 2)[0]
+                    mixture_align_vectors = F.softmax(mixture_align_vectors, 1)
+                    mixture_align_vectors = mixture_align_vectors.unsqueeze(1)
                 else:
-                    index = 1
-                mixture_align_vectors = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), index)[0]
-                mixture_align_vectors = F.softmax(mixture_align_vectors, 1)
-                mixture_align_vectors = mixture_align_vectors.unsqueeze(1)
+                    if self.pooling == 'column':
+                        index = 2
+                    else:
+                        index = 1
+                    mixture_align_vectors = torch.max(torch.bmm(m_std, m_topic.transpose(1, 2)), index)[0]
+                    mixture_align_vectors = F.softmax(mixture_align_vectors, 1)
+                    mixture_align_vectors = mixture_align_vectors.unsqueeze(1)
 
 
-        if self.replace_unk_topic:
-            unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
-            for idx, value in enumerate(unk_idx):
-                 if value == 1:
-                     mixture_align_vectors.data[idx] = align_vectors.data[idx]
-                     topic_align_vectors.data[idx] = align_vectors.data[idx]
+            if self.replace_unk_topic:
+                unk_idx = [1 if torch.eq(row, unk_topic).all() else 0 for row in source_topic]
+                for idx, value in enumerate(unk_idx):
+                     if value == 1:
+                         mixture_align_vectors.data[idx] = align_vectors.data[idx]
+                         topic_align_vectors.data[idx] = align_vectors.data[idx]
 
         c = torch.bmm(mixture_align_vectors, memory_bank)
 

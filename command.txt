@@ -29,11 +29,11 @@ python preprocess.py -train_src data/bbc-split/src.train.token.lower -train_topi
 
 CUDA_VISIBLE_DEVICES=0 python train.py -save_model models/topic1024+dot+joint+weighted+sparsemax+512 -data data/preprocess-bbc-split/bbc_topic -copy_attn -global_attention mlp -word_vec_size 256 -rnn_size 1024 -layers 2 -encoder_type brnn -train_steps 250000 -max_grad_norm 2 -dropout 0. -batch_size 16 -valid_batch_size 16 -optim adagrad -learning_rate 0.15 -adagrad_accumulator_init 0.1 -seed 777 -topic_matrix data/preprocess-topic-bbc/t-512-shashi/topic_matrix.tensor -bridge -world_size 0 -gpu_ranks 0 -reuse_copy_attn -copy_loss_by_seqlength -log_file out/topic1024+dot+joint+weighted+sparsemax+512.log -joint_attn_mode co_attention -pooling column -topic_attn dot -topic_attn_function sparsemax
 
-CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 50 -beam_size 10 -model models/save_models/topic1024+tf+multihead+100_step_170000.pt -src data/bbc-split/src.validation.token.lower -lemma data/bbc-split/src.validation.lemma.lower -topic_matrix data/preprocess-topic-bbc/t-512-shashi/topic_matrix.tensor -dec_topic_size 512 -theta 0.5 -output out/topic1024+tf+multihead+512-shashi.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>"
+CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 50 -beam_size 10 -model models/save_models/topic1024+exp+mlp+softmax+glove_step_160000.pt -src data/bbc-split/src.validation.token.lower -lemma data/bbc-split/src.validation.lemma.lower -topic_matrix data/preprocess-topic-bbc/t-512-shashi/topic_matrix.tensor -theta 0.5 -output out/topic1024+exp+mlp+softmax+glove.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>" -joint_attn_mode co_attention -pooling joint -topic_attn dot -topic_attn_function softmax -replace_unk
 
-python parse_rouge.py -c ../testout/topic1024+tf+multihead+100_debug.out -r /home/acp16hh/Projects/Research/Experiments/Exp_Freya_Topic_Summ/Topic_Summ/data/pre_exp/docs/validation/tgt.validation.select.token -output_dir ../testout -output_name topic1024+tf+multihead+100_debug
+python parse_rouge.py -c ../out/topic1024+exp+mlp+softmax+glove.out -r ../data/bbc-split/src.validation.token.lower -output_dir ../out -output_name topic1024+exp+mlp+softmax+glove
 
-python test_rouge.py -c testout/topic1024+tf+multihead+100_debug.c.txt -r testout/topic1024+tf+multihead+100_debug.r.txt
+python test_rouge.py -c out/topic1024+exp+mlp+softmax+glove.c.txt -r out/topic1024+exp+mlp+softmax+glove.r.txt
 [2019-05-06 21:31:11,078 INFO] encoder: 7322624
 [2019-05-06 21:31:11,078 INFO] decoder: 35990868
 [2019-05-06 21:31:11,078 INFO] * number of pa
