@@ -1,12 +1,11 @@
 import os
 
-
-# + '#$ -P rse\n' \
-# + '#$ -q rse.q\n' \
 def gen_header():
     header = '#!/usr/bin/env bash\n' \
              + '#$ -l gpu=1\n' \
              + '#$ -l rmem=16G\n' \
+             + '#$ -P rse\n' \
+             + '#$ -q rse.q\n' \
              + '#$ -l h_rt=96:00:00\n' \
              + '#$ -M hhardy2@sheffield.ac.uk\n' \
              + '#$ -m easb\n' \
