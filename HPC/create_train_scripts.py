@@ -1,10 +1,11 @@
 import os
 
+
+# + '#$ -P rse\n' \
+# + '#$ -q rse.q\n' \
 def gen_header():
     header = '#!/usr/bin/env bash\n' \
              + '#$ -l gpu=1\n' \
-             + '#$ -P rse\n' \
-             + '#$ -q rse.q\n' \
              + '#$ -l rmem=16G\n' \
              + '#$ -l h_rt=96:00:00\n' \
              + '#$ -M hhardy2@sheffield.ac.uk\n' \
@@ -22,7 +23,7 @@ def gen_header():
 
 if __name__ == '__main__':
     data = '$DATA/bbc_topic'
-    topic_matrix = 'TOPIC_DATA/t-512-shashi/topic_matrix.tensor'
+    topic_matrix = '$TOPIC_DATA/t-512-shashi/topic_matrix.tensor'
     name = ''
 
     joint_attn_modes = ['co_attention', 'mix', 'embedded']
