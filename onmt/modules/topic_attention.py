@@ -226,10 +226,6 @@ class TopicAttention(nn.Module):
         else:
             one_step = False
 
-        if self.topic_joint_attn_mode == 'embedded':
-            source = self.linear_query_topic_and_std(torch.cat([source, source_topic], 2))
-            memory_bank = self.linear_context_topic_and_std(torch.cat([memory_bank, topic_bank], 2))
-
         batch, source_l, dim = memory_bank.size()
         batch_, target_l, dim_ = source.size()
         aeq(batch, batch_)
@@ -246,9 +242,14 @@ class TopicAttention(nn.Module):
             memory_bank += self.linear_cover(cover).view_as(memory_bank)
             memory_bank = torch.tanh(memory_bank)
 
-        ## Global alignment
-        # compute attention scores, as in Luong et al.
-        align = self.score(source, memory_bank)
+        if self.topic_joint_attn_mode == 'embedded':
+            source_new = self.linear_query_topic_and_std(torch.cat([source, source_topic], 2))
+            memory_bank_new = self.linear_context_topic_and_std(torch.cat([memory_bank, topic_bank], 2))
+            align = self.score(source_new, memory_bank_new)
+        else:
+            ## Global alignment
+            # compute attention scores, as in Luong et al.
+            align = self.score(source, memory_bank)
 
         if memory_lengths is not None:
             mask = sequence_mask(memory_lengths, max_len=align.size(-1))
