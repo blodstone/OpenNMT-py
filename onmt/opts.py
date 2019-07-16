@@ -166,7 +166,7 @@ def model_opts(parser):
     group.add('--topic_attn', '-topic_attn', default='dot', type=str,
               choices=['dot', 'mlp'], help="The attention type to use: dotprod or general (Luong) or MLP (Bahdanau))")
     group.add('--topic_attn_function', '-topic_attn_function', type=str, default="softmax", choices=["softmax", "sparsemax"])
-    group.add('--replace_unk_topic', '-replace_topic', action='store_true', help='Replace unknown topic attention with standard attention')
+    group.add('--replace_unk_topic', '-replace_unk_topic', action='store_true', help='Replace unknown topic attention with standard attention')
 
 
     # Generator and loss options.
