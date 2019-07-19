@@ -19,6 +19,20 @@ def remove_sos_eos(file):
         result.append(' '.join(l_result))
     return result
 
+def remove_sos_eos_lines(alist):
+    result = []
+    for line in alist:
+        line = line.strip()
+        l_result = []
+        lines = line.split()
+        for l in lines:
+            if l == '<sos>':
+                continue
+            if l == '<eos>':
+                break
+            l_result.append(l)
+        result.append(' '.join(l_result))
+    return result
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

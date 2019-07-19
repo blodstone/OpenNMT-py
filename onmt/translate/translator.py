@@ -268,11 +268,11 @@ class Translator(object):
         else:
             print(msg)
 
-    def _gold_score(self, batch, memory_bank, src_lengths, src_vocabs,
+    def _gold_score(self, batch, memory_bank, topic_memory_bank, topic, src_lengths, src_vocabs,
                     use_src_map, enc_states, batch_size, src):
         if "tgt" in batch.__dict__:
             gs = self._score_target(
-                batch, memory_bank, src_lengths, src_vocabs,
+                batch, memory_bank, topic_memory_bank, topic, src_lengths, src_vocabs,
                 batch.src_map if use_src_map else None)
             self.model.decoder.init_state(src, memory_bank, enc_states)
         else:
@@ -770,7 +770,7 @@ class Translator(object):
             "attention": None,
             "batch": batch,
             "gold_score": self._gold_score(
-                batch, memory_bank, src_lengths, src_vocabs, use_src_map,
+                batch, memory_bank, topic_memory_bank, topic, src_lengths, src_vocabs, use_src_map,
                 enc_states, batch_size, src)}
 
         # (2) Repeat src objects `beam_size` times.
@@ -955,13 +955,13 @@ class Translator(object):
 
         return results
 
-    def _score_target(self, batch, memory_bank, src_lengths,
-                      src_vocabs, src_map):
+    def _score_target(self, batch, memory_bank, topic_memory_bank, topic,
+                      src_lengths, src_vocabs, src_map):
         tgt = batch.tgt
         tgt_in = tgt[:-1]
 
         log_probs, attn = self._decode_and_generate(
-            tgt_in, memory_bank, batch, src_vocabs,
+            tgt_in, memory_bank, topic_memory_bank, topic, batch, src_vocabs,
             memory_lengths=src_lengths, src_map=src_map)
 
         log_probs[:, :, self._tgt_pad_idx] = 0
@@ -972,12 +972,13 @@ class Translator(object):
         return gold_scores
 
     def _report_score(self, name, score_total, words_total):
+        msg = ''
         if words_total == 0:
             msg = "%s No words predicted" % (name,)
-        else:
-            msg = ("%s AVG SCORE: %.4f, %s PPL: %.4f" % (
-                name, score_total / words_total,
-                name, math.exp(-score_total / words_total)))
+        #else:
+        #    msg = ("%s AVG SCORE: %.4f, %s PPL: %.4f" % (
+        #        name, score_total / words_total,
+        #        name, math.exp(-score_total / words_total)))
         return msg
 
     def _report_bleu(self, tgt_path):
@@ -997,9 +998,14 @@ class Translator(object):
 
     def _report_rouge(self, tgt_path):
         import subprocess
-        path = os.path.split(os.path.realpath(__file__))[0]
-        msg = subprocess.check_output(
-            "python %s/tools/test_rouge.py -r %s -c STDIN" % (path, tgt_path),
-            shell=True, stdin=self.out_file
-        ).decode("utf-8").strip()
-        return msg
+        self.out_file.seek(0)
+        pred_out = list(self.out_file.readlines())
+        from tools.test_rouge import test_rouge
+        from scripts.parse_rouge import remove_sos_eos_lines
+        # path = os.path.split(os.path.realpath(__file__))[0]
+        test_rouge(remove_sos_eos_lines([b.decode() for b in tgt_path]), remove_sos_eos_lines(pred_out))
+        # msg = subprocess.check_output(
+        #     "python %s/tools/test_rouge.py -r %s -c STDIN" % (path, tgt_path),
+        #     shell=True, stdin=self.out_file
+        # ).decode("utf-8").strip()
+        return ''

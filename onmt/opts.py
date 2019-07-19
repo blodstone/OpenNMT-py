@@ -577,7 +577,7 @@ def translate_opts(parser):
     # Topic attention options
     group.add('--topic_matrix', '-topic_matrix', help="Path to topic matrix")
     group.add('--joint_attn_mode', '-joint_attn_mode', type=str, default='co_attention',
-              choices=['co_attention', 'mix'], help="Type of joining the topic and standard attention")
+              choices=['co_attention', 'mix','embedded'], help="Type of joining the topic and standard attention")
     group.add('--theta', '-theta', type=float,
               help="The hyperparameter to adjust standard and topic attention proportion in mix mode", )
     group.add('--pooling', '-pooling', default='column', type=str,
