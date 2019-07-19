@@ -41,8 +41,8 @@ if __name__ == '__main__':
                     for topic_attn in topic_attns:
                         for topic_attn_function in topic_attn_functions:
                             for replace_unk_topic in replace_unk_topics:
-                                name = '{}_{}_{}_{}_{}'.format(
-                                    joint_attn_mode, pooling,
+                                name = '{}_{}_{}_{}_{}_{}'.format(
+                                    joint_attn_mode, pooling, pooling_mode,
                                     topic_attn, topic_attn_function, replace_unk_topic)
                                 log_file = '$OUTPUT/{}.log'.format(name)
                                 save_model = '$MODEL/{}/{}'.format(name, name)
