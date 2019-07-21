@@ -1003,7 +1003,7 @@ class Translator(object):
         from tools.test_rouge import test_rouge
         from scripts.parse_rouge import remove_sos_eos_lines
         # path = os.path.split(os.path.realpath(__file__))[0]
-        test_rouge(remove_sos_eos_lines([b.decode() for b in tgt_path]), remove_sos_eos_lines(pred_out))
+        test_rouge(remove_sos_eos_lines(pred_out), remove_sos_eos_lines([b.decode() for b in tgt_path]))
         # msg = subprocess.check_output(
         #     "python %s/tools/test_rouge.py -r %s -c STDIN" % (path, tgt_path),
         #     shell=True, stdin=self.out_file

@@ -44,6 +44,7 @@ def test_rouge(cand, ref):
         rouge_results = r.convert_and_evaluate()
         # print(rouge_results)
         results_dict = r.output_to_dict(rouge_results)
+        logger.info(rouge_results_to_str(results_dict))
         return results_dict
     finally:
         pass
