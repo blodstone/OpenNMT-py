@@ -587,6 +587,7 @@ def translate_opts(parser):
               choices=['dot', 'mlp'], help="The attention type to use: dotprod or general (Luong) or MLP (Bahdanau))")
     group.add('--topic_attn_function', '-topic_attn_function', type=str, default="softmax",
               choices=["softmax", "sparsemax"])
+    group.add('--pooling_mode', '-pooling_mode', default='max', type=str, choices=['max', 'mean'])
     group.add('--replace_unk_topic', '-replace_topic', action='store_true',
               help='Replace unknown topic attention with standard attention')
 
