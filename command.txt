@@ -19,7 +19,7 @@ OpenNMT1024 lower no tag ROUGE(1/2/3/L/SU4): 22.06/5.76/2.14/17.07/6.01
 Test
 
 OpenNMT512 ROUGE(1/2/3/L/SU4): 25.05/5.50/1.72/18.58/6.44
-
+Embedded: 29.19/8.32/3.15/22.30/8.92
 ######
 Our: Topic attention
 ######
@@ -31,9 +31,9 @@ CUDA_VISIBLE_DEVICES=0 python train.py -save_model models/topic1024+dot+joint+we
 
 CUDA_VISIBLE_DEVICES=0 python translate.py -gpu 0 -batch_size 50 -beam_size 10 -model models/save_models/topic1024+embedded+512_1_step_165000.pt -src data/bbc-split/src.validation.token.lower -lemma data/bbc-split/src.validation.lemma.lower -topic_matrix data/preprocess-topic-bbc/t-512-shashi/topic_matrix.tensor -output out/topic1024+embedded+512_1_step_165000.out -min_length 35 -verbose -stepwise_penalty -coverage_penalty summary -beta 5 -length_penalty wu -alpha 0.9 -block_ngram_repeat 3 -ignore_when_blocking "." "</t>" "<t>" "<sos>" "<eos>" -joint_attn_mode embedded
 
-python parse_rouge.py -c ../out/topic1024+embedded+512_1_step_165000.out -r ../data/bbc-split/src.validation.token.lower -output_dir ../out -output_name topic1024+embedded+512_1
+python parse_rouge.py -c ../testout/topic1024_debug.out -r ../data/bbc-split/src.validation.token.lower.small -output_dir ../out -output_name topic1024_debug
 
-python test_rouge.py -c out/topic1024+embedded+512_1.c.txt -r out/topic1024+embedded+512_1.r.txt
+python test_rouge.py -c out/topic1024_debug.c.txt -r out/topic1024_debug.r.txt
 [2019-05-06 21:31:11,078 INFO] encoder: 7322624
 [2019-05-06 21:31:11,078 INFO] decoder: 35990868
 [2019-05-06 21:31:11,078 INFO] * number of pa
@@ -43,7 +43,11 @@ topic1024-bbc+tf+075ah ROUGE(1/2/3/L/SU4): 26.76/7.11/2.55/20.13/7.39
 topic1024-bbc+tf+05ah ROUGE(1/2/3/L/SU4): 24.44/6.35/2.38/18.71/6.49
 topic1024-bbc+tf+025ah ROUGE(1/2/3/L/SU4): 20.67/3.83/1.24/15.71/4.81
 
-OpenNMT1024 ROUGE(1/2/3/L/SU4): 27.74/7.75/2.88/20.85/7.88
+OpenNMT1024 ROUGE(1/2/3/L/SU4) 35 length: 27.74/7.75/2.88/20.85/7.88
+topic1024+embedded 25 length replace_unk ROUGE(1/2/3/L/SU4): 29.24/8.25/3.06/22.28/8.98
+topic1024+embedded 25 length ROUGE(1/2/3/L/SU4): 28.61/8.13/3.01/21.85/8.73
+topic1024+embedded 35 length ROUGE(1/2/3/L/SU4): 27.93/7.78/2.84/20.90/8.01
+
 topic1024+tf+multihead+100 ROUGE(1/2/3/L/SU4): 26.76/6.97/2.44/20.02/7.33
 topic1024+tf+multihead+1512 ROUGE(1/2/3/L/SU4): 26.97/7.03/2.47/20.18/7.43
 
