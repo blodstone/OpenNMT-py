@@ -26,6 +26,7 @@ def main(opt):
     topic['topic_joint_attn_mode'] = opt.joint_attn_mode
     if opt.joint_attn_mode == 'co_attention':
         topic['pooling'] = opt.pooling
+        topic['pooling_mode'] = opt.pooling_mode
         topic['weighted_co_attn'] = opt.weighted_co_attn
     else:
         topic['theta'] = opt.theta
