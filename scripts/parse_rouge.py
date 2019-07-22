@@ -29,7 +29,7 @@ def remove_sos_eos_lines(alist):
             if l == '<sos>':
                 continue
             if l == '<eos>':
-                break
+                continue
             l_result.append(l)
         result.append(' '.join(l_result))
     return result
